@@ -14,3 +14,7 @@ The shell version, todoapp, allowed for any levels of sub-tasks. I have not yet 
 
 I also may fork this and make a YAML file, so that the format is standard, especially when having sub-tasks.
 After this, I will port over my bug tracker, [bugzy.txt](http://github.com/rkumar/bugzy.txt), which uses a TAB delimited file. It's a cool app to use for bug tracking - you should try it out. I will possibly use sqlite instead of screwing around with a delimited file. 
+
+## Copyright
+
+Copyright (c) 2010 Rahul Kumar. See LICENSE for details.

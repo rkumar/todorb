@@ -1,27 +1,29 @@
 #!/usr/bin/env ruby -w
 =begin
-  * Name: 
-  * Description   
-  * Author: rkumar
-  * Date: 
-  * License:
-    Same as Ruby's License (http://www.ruby-lang.org/LICENSE.txt)
+  * Name:          todorb.rb
+  * Description:   a command line todo list manager
+  * Author:        rkumar
+  * Date:          2010-06-10 20:10 
+  * License:       GPL
 
 =end
 require 'rubygems'
-require 'csv'
-require 'colorconstants'
+#require 'csv'
+require 'common/colorconstants'
 include ColorConstants
-require 'sed'
+require 'common/sed'
 include Sed
 
 PRI_A = YELLOW + BOLD
 PRI_B = WHITE  + BOLD
 PRI_C = GREEN  + BOLD
 PRI_D = CYAN  + BOLD
+VERSION = "1.0"
+DATE = "2010-06-10"
+APPNAME = $0
+AUTHOR = "rkumar"
 
 class Todo
-  attr_reader :value
   def initialize options, argv
  
     @options = options
@@ -42,6 +44,21 @@ class Todo
     @now = t.strftime("%Y-%m-%d %H:%M:%S")
     @today = t.strftime("%Y-%m-%d")
     @verbose = @options[:verbose]
+    #@actions = %w[ list add pri priority depri tag del delete status redo note archive help]
+    @actions = {}
+    @actions["list"] = "List all tasks.\n\t --hide-numbering --renumber"
+    @actions["add"] = "Add a task. \n\t #{$0} add <TEXT>\n\t --component C --project P --priority X add <TEXT>"
+    @actions["pri"] = "Add priority to task. \n\t #{$0} pri <ITEM> [A-Z]"
+    @actions["priority"] = "Same as pri"
+    @actions["depri"] = "Remove priority of task. \n\t #{$0} depri <ITEM>"
+    @actions["delete"] = "Delete a task. \n\t #{$0} delete <ITEM>"
+    @actions["del"] = "Same as delete"
+    @actions["status"] = "Change the status of a task. \n\t #{$0} status <STAT> <ITEM>\n\t<STAT> are closed started pending unstarted hold next"
+    @actions["redo"] = "Renumbers the todo file starting 1"
+    @actions["note"] = "Add a note to an item. \n\t #{$0} note <ITEM> <TEXT>"
+    @actions["archive"] = "archive closed tasks to archive.txt"
+    @actions["help"] = "Display help"
+
 
     # TODO config
     # we need to read up from config file and update
@@ -53,7 +70,6 @@ class Todo
     @action.sub!('priority', 'pri')
     @action.sub!(/^del$/, 'delete')
 
-    @actions = %w[ list add pri priority depri tag del delete status redo note archive help]
 
     @argv.shift
     if @actions.include? @action
@@ -63,7 +79,8 @@ class Todo
     end
   end
   def help args
-    puts "Actions are #{@actions.join(", ")} "
+    #puts "Actions are #{@actions.join(", ")} "
+    @actions.each_pair { |name, val| puts "#{name}\t#{val}" }
   end
   def add args
     if args.empty?
@@ -139,7 +156,9 @@ class Todo
   def populate
     @ctr = 0
     @total = 0
-    CSV.foreach(@file,:col_sep => "\t") do |row|    # 1.9 2009-10-05 11:12 
+    #CSV.foreach(@file,:col_sep => "\t") do |row|    # 1.9 2009-10-05 11:12 
+    File.open(@file).each do |line|
+      row = line.chomp.split "\t"
       @total += 1
       if @options[:show_all]
         @data << row
@@ -530,78 +549,102 @@ class Todo
           status="close"
           newstatus = "x"
     when "1","next"
-          status="next"
-          newstatus = "1"
+      status="next"
+      newstatus = "1"
     when "H","hold" 
-         status="hold"
-          newstatus = "H"
+      status="hold"
+      newstatus = "H"
     when "u","uns","unst","unstart","unstarted" 
-         status="unstarted"
-         newstatus = " "
+      status="unstarted"
+      newstatus = " "
     end
     #puts " after #{status} "
     #newstatus=$( echo $status | sed 's/^start/@/;s/^pend/P/;s/^close/x/;s/hold/H/;s/next/1/;s/^unstarted/ /' )
     return status, newstatus
   end
-end
 
-if __FILE__ == $0
-  begin
-    # http://www.ruby-doc.org/stdlib/libdoc/optparse/rdoc/classes/OptionParser.html
-    require 'optparse'
-    options = {}
-    OptionParser.new do |opts|
-      opts.banner = "Usage: #{$0} [options]"
+  def self.main args
+    begin
+      # http://www.ruby-doc.org/stdlib/libdoc/optparse/rdoc/classes/OptionParser.html
+      require 'optparse'
+      options = {}
+      OptionParser.new do |opts|
+        opts.banner = "Usage: #{$0} [options] action"
 
-      opts.on("-v", "--[no-]verbose", "Run verbosely") do |v|
-        options[:verbose] = v
-      end
-      opts.on("-f", "--file FILENAME", "CSV filename") do |v|
-        options[:file] = v
-      end
-      opts.on("-P", "--project PROJECTNAME", "name of project") do |v|
-        options[:project] = v
-      end
-      opts.on("-p", "--priority A-Z",  "priority code") do |v|
-        options[:priority] = v
-      end
-      opts.on("-C", "--component COMPONENT",  "component name") do |v|
-        options[:component] = v
-      end
-      opts.on("--[no-]color", "--[no-]colors",  "colorize") do |v|
-        options[:colorize] = v
-        options[:color_scheme] = 1
-      end
-      opts.on("-s", "--sort", "sort on priority") do |v|
-        options[:sort] = v
-      end
-      opts.on("-g", "--grep REGEXP", "search on regexp") do |v|
-        options[:grep] = v
-      end
-      opts.on("--force", "force delete or add without prompting") do |v|
-        options[:force] = v
-      end
-      opts.on("--renumber", "renumber while listing") do |v|
-        options[:renumber] = v
-      end
-      opts.on("--hide-numbering", "hide-numbering while listing ") do |v|
-        options[:hide_numbering] = v
-      end
-      opts.on("--show-all", "show_all ") do |v|
-        options[:show_all] = v
-      end
-    end.parse!
+        opts.on("-v", "--[no-]verbose", "Run verbosely") do |v|
+          options[:verbose] = v
+        end
+        opts.on("-f", "--file FILENAME", "CSV filename") do |v|
+          options[:file] = v
+        end
+        opts.on("-P", "--project PROJECTNAME", "name of project for add or list") { |v|
+          options[:project] = v
+        }
+        opts.on("-p", "--priority A-Z",  "priority code for add or list") { |v|
+          options[:priority] = v
+        }
+        opts.on("-C", "--component COMPONENT",  "component name for add or list") { |v|
+          options[:component] = v
+        }
+        opts.on("--[no-]color", "--[no-]colors",  "colorize listing") do |v|
+          options[:colorize] = v
+          options[:color_scheme] = 1
+        end
+        opts.on("-s", "--sort", "sort list on priority") do |v|
+          options[:sort] = v
+        end
+        opts.on("-g", "--grep REGEXP", "filter list on pattern") do |v|
+          options[:grep] = v
+        end
+        opts.on("--force", "force delete or add without prompting") do |v|
+          options[:force] = v
+        end
+        opts.on("--renumber", "renumber while listing") do |v|
+          options[:renumber] = v
+        end
+        opts.on("--hide-numbering", "hide-numbering while listing ") do |v|
+          options[:hide_numbering] = v
+        end
+        opts.on("--show-all", "show all tasks (incl closed)") do |v|
+          options[:show_all] = v
+        end
+        opts.on("--show-actions", "show actions ") do |v|
+          todo = Todo.new(options, ARGV)
+          todo.help nil
+          exit 0
+        end
 
-    #options[:file] ||= "rbcurse/TODO2.txt"
-    options[:file] ||= "TODO2.txt"
-    p options
-    print "ARGV: "
-    p ARGV
-    #raise "-f FILENAME is mandatory" unless options[:file]
+        opts.separator ""
+        opts.separator "Common options:"
 
-    klass = Todo.new(options, ARGV)
-    klass.run
-  ensure
-  end
-end
+        # No argument, shows at tail.  This will print an options summary.
+        # Try it and see!
+        opts.on_tail("-h", "--help", "Show this message") do
+          puts opts
+          exit
+        end
 
+        opts.on_tail("--version", "Show version") do
+          puts "#{APPNAME} version #{VERSION}, #{DATE}"
+          puts "by #{AUTHOR}. This software is under the GPL License."
+          exit 0
+        end
+      end.parse!(args)
+
+      #options[:file] ||= "rbcurse/TODO2.txt"
+      options[:file] ||= "TODO2.txt"
+      if options[:verbose]
+        p options
+        print "ARGV: " 
+        p args #ARGV 
+      end
+      #raise "-f FILENAME is mandatory" unless options[:file]
+
+      todo = Todo.new(options, args)
+      todo.run
+    ensure
+    end
+  end # main
+end # class Todo
+
+Todo.main(ARGV) if __FILE__ == $0
