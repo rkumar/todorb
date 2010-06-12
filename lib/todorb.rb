@@ -632,7 +632,7 @@ class Todo
             options[:dir] = dir
             FileUtils.cd dir
           else
-            print_red "#{v} is not a valid directory"
+            puts "#{RED}#{v}: no such directory #{CLEAR}"
             exit 1
           end
         end
