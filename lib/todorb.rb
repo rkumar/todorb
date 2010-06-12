@@ -209,27 +209,30 @@ class Todo
   # However, we should put the colors in some Map, so it can be changed at configuration level.
   #
   def colorize
+    colorme = @options[:colorize]
     @data.each do |r| 
       if @options[:hide_numbering]
         string = "#{r[1]} "
       else
         string = " #{r[0]} #{r[1]} "
       end
-      m=string.match(/\(([A-Z])\)/)
-      if m 
-        case m[1]
-        when "A", "B", "C", "D"
-          pri = self.class.const_get("PRI_#{m[1]}")
-          #string = "#{YELLOW}#{BOLD}#{string}#{CLEAR}"
-          string = "#{pri}#{string}#{CLEAR}"
+      if colorme
+        m=string.match(/\(([A-Z])\)/)
+        if m 
+          case m[1]
+          when "A", "B", "C", "D"
+            pri = self.class.const_get("PRI_#{m[1]}")
+            #string = "#{YELLOW}#{BOLD}#{string}#{CLEAR}"
+            string = "#{pri}#{string}#{CLEAR}"
+          else
+            string = "#{NORMAL}#{GREEN}#{string}#{CLEAR}"
+            #string = "#{BLUE}\e[6m#{string}#{CLEAR}"
+            #string = "#{BLUE}#{string}#{CLEAR}"
+          end 
         else
-          string = "#{NORMAL}#{GREEN}#{string}#{CLEAR}"
-          #string = "#{BLUE}\e[6m#{string}#{CLEAR}"
-          #string = "#{BLUE}#{string}#{CLEAR}"
-        end 
-      else
           string = "#{NORMAL}#{string}#{CLEAR}"
-      end
+        end
+      end # colorme
       ## since we've added notes, we convert C-a to newline with spaces
       # so it prints in next line with some neat indentation.
       string.gsub!('', "\n        ")
@@ -568,8 +571,15 @@ class Todo
       # http://www.ruby-doc.org/stdlib/libdoc/optparse/rdoc/classes/OptionParser.html
       require 'optparse'
       options = {}
+      options[:verbose] = false
+      options[:colorize] = true
+
       OptionParser.new do |opts|
         opts.banner = "Usage: #{$0} [options] action"
+
+        opts.separator ""
+        opts.separator "Specific options:"
+
 
         opts.on("-v", "--[no-]verbose", "Run verbosely") do |v|
           options[:verbose] = v
@@ -586,6 +596,12 @@ class Todo
         opts.on("-C", "--component COMPONENT",  "component name for add or list") { |v|
           options[:component] = v
         }
+        opts.on("--force", "force delete or add without prompting") do |v|
+          options[:force] = v
+        end
+        opts.separator ""
+        opts.separator "List options:"
+
         opts.on("--[no-]color", "--[no-]colors",  "colorize listing") do |v|
           options[:colorize] = v
           options[:color_scheme] = 1
@@ -596,9 +612,6 @@ class Todo
         opts.on("-g", "--grep REGEXP", "filter list on pattern") do |v|
           options[:grep] = v
         end
-        opts.on("--force", "force delete or add without prompting") do |v|
-          options[:force] = v
-        end
         opts.on("--renumber", "renumber while listing") do |v|
           options[:renumber] = v
         end
@@ -608,20 +621,32 @@ class Todo
         opts.on("--show-all", "show all tasks (incl closed)") do |v|
           options[:show_all] = v
         end
-        opts.on("--show-actions", "show actions ") do |v|
-          todo = Todo.new(options, ARGV)
-          todo.help nil
-          exit 0
-        end
 
         opts.separator ""
         opts.separator "Common options:"
 
+        opts.on_tail("-d DIR", "--dir DIR", "Use TODO file in this directory") do |v|
+          require 'FileUtils'
+          dir = File.expand_path v
+          if File.directory? dir
+            options[:dir] = dir
+            FileUtils.cd dir
+          else
+            print_red "#{v} is not a valid directory"
+            exit 1
+          end
+        end
         # No argument, shows at tail.  This will print an options summary.
         # Try it and see!
         opts.on_tail("-h", "--help", "Show this message") do
           puts opts
           exit
+        end
+
+        opts.on_tail("--show-actions", "show actions ") do |v|
+          todo = Todo.new(options, ARGV)
+          todo.help nil
+          exit 0
         end
 
         opts.on_tail("--version", "Show version") do
