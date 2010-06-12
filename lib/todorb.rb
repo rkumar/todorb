@@ -171,14 +171,34 @@ class Todo
       end
     end
   end
+  ##
+  # filters output based on project and or component and or priority
+  def filter
+    project = @options[:project]
+    component = @options[:component]
+    priority = @options[:priority]
+    if project
+      r = Regexp.new "\\+#{project}"
+      @data = @data.select { |row| row[1] =~ r }
+    end
+    if component
+      r = Regexp.new "@#{component}"
+      @data = @data.select { |row| row[1] =~ r }
+    end
+    if priority
+      r = Regexp.new "\\(#{priority}\\)"
+      @data = @data.select { |row| row[1] =~ r }
+    end
+  end
   def list args
     populate
     grep if @options[:grep]
+    filter if @options[:filter]
     sort if @options[:sort]
     renumber if @options[:renumber]
     colorize # << currently this is where I print !! Since i colorize the whole line
     puts 
-    puts " #{@ctr} of #{@total} rows displayed from #{@todo_file_path} "
+    puts " #{@data.length} of #{@total} rows displayed from #{@todo_file_path} "
 
   end
   def print_todo
@@ -589,12 +609,15 @@ class Todo
         end
         opts.on("-P", "--project PROJECTNAME", "name of project for add or list") { |v|
           options[:project] = v
+          options[:filter] = true
         }
         opts.on("-p", "--priority A-Z",  "priority code for add or list") { |v|
           options[:priority] = v
+          options[:filter] = true
         }
         opts.on("-C", "--component COMPONENT",  "component name for add or list") { |v|
           options[:component] = v
+          options[:filter] = true
         }
         opts.on("--force", "force delete or add without prompting") do |v|
           options[:force] = v
