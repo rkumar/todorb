@@ -37,7 +37,9 @@ class Todo
   def init_vars
     @todo_default_action = "list"
     @todo_file_path = @options[:file] || "TODO2.txt"
-    @archive_path = "archive.txt" # should take path of todo and put there TODO:
+    #@todo_serial_path = File.expand_path("~/serial_numbers")
+    @todo_serial_path = "serial_numbers"
+    @archive_path = "todo_archive.txt" # should take path of todo and put there TODO:
     @todo_delim = "\t"
     @appname = File.basename( Dir.getwd ) #+ ".#{$0}"
     t = Time.now
@@ -116,13 +118,15 @@ class Todo
   def _get_serial_number
     require 'fileutils'
     appname = @appname
-    filename = "/Users/rahul/serial_numbers"
+    filename = @todo_serial_path
     h = {}
-    File.open(filename).each { |line|
-      #sn = $1 if line.match regex
-      x = line.split ":"
-      h[x[0]] = x[1].chomp
-    }
+    if File.exists?(filename)
+      File.open(filename).each { |line|
+        #sn = $1 if line.match regex
+        x = line.split ":"
+        h[x[0]] = x[1].chomp
+      }
+    end
     sn = h[appname] || 1
     # update the sn in file
     nsn = sn.to_i + 1
@@ -139,7 +143,7 @@ class Todo
   def _set_serial_number number
     appname = @appname
     pattern = Regexp.new "^#{appname}:.*$"
-    filename = "/Users/rahul/serial_numbers"
+    filename = @todo_serial_path
     _backup filename
     change_row filename, pattern, "#{appname}:#{number}"
   end
@@ -691,7 +695,6 @@ class Todo
         end
       end.parse!(args)
 
-      #options[:file] ||= "rbcurse/TODO2.txt"
       options[:file] ||= "TODO2.txt"
       if options[:verbose]
         p options
