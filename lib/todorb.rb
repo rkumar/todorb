@@ -30,6 +30,7 @@ class Todo
   # Adding a task is the first operation.
   #     $ todorb add "Create a project in rubyforge"
   #     $ todorb add "Update Rakefile with project name"
+  # The above creates a TODO2.txt file and a serial_number file.
   #
   # == List tasks
   # To list open/unstarted tasks:
@@ -53,6 +54,7 @@ class Todo
   def initialize options, argv
  
     @options = options
+    @aliases = {}
     @argv = argv
     @file = options[:file]
     ## data is a 2 dim array: rows and fields. It contains each row of the file
@@ -87,9 +89,24 @@ class Todo
     @actions["archive"] = "archive closed tasks to archive.txt"
     @actions["help"] = "Display help"
 
+    # adding some sort of aliases so shortcuts can be defined
+    @aliases["open"] = ["status","open"]
+    @aliases["close"] = ["status","closed"]
 
     # TODO config
     # we need to read up from config file and update
+  end
+  def check_aliases action, args
+    ret = @aliases[action]
+    if ret
+      a = ret.shift
+      b = [*ret, *args]
+      @action = a
+      @argv = b
+      puts " #{@action} ; argv: #{@argv} "
+      return true
+    end
+    return false
   end
   # menu MENU
   def run
@@ -103,7 +120,12 @@ class Todo
     if @actions.include? @action
       send(@action, @argv)
     else
-      help @argv
+      # check aliases
+      if check_aliases @action, @argv
+        send(@action, @argv)
+      else
+        help @argv
+      end
     end
   end
   def help args
@@ -478,6 +500,10 @@ class Todo
       #puts "#{RED}#{line}#{CLEAR}" if @verbose
     #end
   end
+  ## shortcut for "status close"
+  #def close args
+    #status( [ "closed", *args])
+  #end
   ##
   # separates args into tag or subcommand and items
   # This allows user to pass e.g. a priority first and then item list
@@ -696,6 +722,7 @@ class Todo
           dir = File.expand_path v
           if File.directory? dir
             options[:dir] = dir
+            # changing dir is important so that serial_number file is the current one.
             FileUtils.cd dir
           else
             puts "#{RED}#{v}: no such directory #{CLEAR}"
