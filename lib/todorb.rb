@@ -90,22 +90,22 @@ class Todo
       if text.empty?
         exit 1
       end
-      Kernel.print("You gave me '#{text}'")
+      Kernel.print("You gave me '#{text}'") if @verbose
     else
       text = args.join " "
-      Kernel.print("I got '#{text}'")
+      Kernel.print("I got '#{text}'") if @verbose
     end
     # convert actual newline to C-a. slash n's are escapes so echo -e does not muck up.
     text.tr! "\n", ''
-    Kernel.print("Got '#{text}'\n")
+    Kernel.print("Got '#{text}'\n") if @verbose
     item = _get_serial_number
     paditem = _paditem(item)
-    print "item no is:#{paditem}:\n"
+    print "item no is:#{paditem}:\n" if @verbose
     priority = @options[:priority] ? " (#{@options[:priority]})" : ""
     project  = @options[:project]  ? " +#{@options[:project]}"   : ""
     component  = @options[:component]  ? " @#{@options[:component]}"   : ""
     newtext="#{paditem}#{@todo_delim}[ ]#{priority}#{project}#{component} #{text} (#{@today})"
-    puts "Adding"
+    puts "Adding:"
     puts newtext
     File.open(@todo_file_path, "a") { | file| file.puts newtext }
 
@@ -147,6 +147,13 @@ class Todo
     require 'fileutils'
     FileUtils.cp filename, "#{filename}.org"
   end
+  def check_file filename=@todo_file_path
+    File.exists?(filename) or die "#{filename} does not exist in this dir. Use 'add' to create an item first."
+  end
+  def die text
+    $stderr.puts text
+    exit 1
+  end
   ##
   # for historical reasons, I pad item to 3 spaces in text file.
   # It used to help me in printing straight off without any formatting in unix shell
@@ -154,6 +161,7 @@ class Todo
     return sprintf("%3s", item)
   end
   def populate
+    check_file
     @ctr = 0
     @total = 0
     #CSV.foreach(@file,:col_sep => "\t") do |row|    # 1.9 2009-10-05 11:12 
@@ -431,7 +439,8 @@ class Todo
       print_red "Status #{stat} is invalid!"
       exit 1
     end
-    change_items(items, /(\[.\])/, "[#{newstatus}]")
+    ctr = change_items(items, /(\[.\])/, "[#{newstatus}]")
+    puts "Changed status of #{ctr} items"
     #change_items items do |item, line|
       #puts line if @verbose
       #line.sub!(/(\[.\])/, "[#{newstatus}]")
@@ -518,18 +527,21 @@ class Todo
   # yields lines from file that match the given item
   # We do not need to now parse and match the item in each method
   def change_items args, pattern=nil, replacement=nil
+    changed_ctr = 0
     change_file @todo_file_path do |line|
       item = line.match(/^ *([0-9]+)/)
       if args.include? item[1]
         if pattern
           puts line if @verbose
-          line.sub!(pattern, replacement)
+          ret = line.sub!(pattern, replacement)
+          changed_ctr += 1 if ret
           print_red line if @verbose
         else
           yield item[1], line
         end
       end
     end
+    return changed_ctr
   end
   ##
   # Redoes the numbering in the file.
@@ -577,7 +589,7 @@ class Todo
     when "H","hold" 
       status="hold"
       newstatus = "H"
-    when "u","uns","unst","unstart","unstarted" 
+    when "u","uns","unst","unstart","unstarted","open" 
       status="unstarted"
       newstatus = " "
     end
