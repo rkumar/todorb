@@ -83,7 +83,7 @@ class Todo
     @actions["depri"] = "Remove priority of task. \n\t #{$0} depri <ITEM>"
     @actions["delete"] = "Delete a task. \n\t #{$0} delete <ITEM>"
     @actions["del"] = "Same as delete"
-    @actions["status"] = "Change the status of a task. \n\t #{$0} status <STAT> <ITEM>\n\t<STAT> are closed started pending unstarted hold next"
+    @actions["status"] = "Change the status of a task. \n\t #{$0} status <STAT> <ITEM>\n\t<STAT> are open closed started pending hold next"
     @actions["redo"] = "Renumbers the todo file starting 1"
     @actions["note"] = "Add a note to an item. \n\t #{$0} note <ITEM> <TEXT>"
     @actions["archive"] = "archive closed tasks to archive.txt"
@@ -129,8 +129,11 @@ class Todo
     end
   end
   def help args
-    #puts "Actions are #{@actions.join(", ")} "
+    puts "Actions are "
     @actions.each_pair { |name, val| puts "#{name}\t#{val}" }
+    puts " "
+    puts "Aliases are "
+    @aliases.each_pair { |name, val| puts "#{name}:\t#{val.join(' ')}" }
   end
   def add args
     if args.empty?
