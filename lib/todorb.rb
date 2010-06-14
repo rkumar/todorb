@@ -24,6 +24,32 @@ APPNAME = $0
 AUTHOR = "rkumar"
 
 class Todo
+  # This class is responsible for all todo task related functionality.
+  #
+  # == Create a file
+  # Adding a task is the first operation.
+  #     $ todorb add "Create a project in rubyforge"
+  #     $ todorb add "Update Rakefile with project name"
+  #
+  # == List tasks
+  # To list open/unstarted tasks:
+  #     $ todorb 
+  # To list closed tasks also:
+  #     $ todorb --show-all
+  #
+  # If you are located elsewhere, give directory name:
+  #     $ todorb -d ~/
+  #
+  # == Close a task (mark as done)
+  #     $ todorb status close 1
+  # 
+  # == Add priority
+  #     $ todorb pri A 2
+  #
+  # For more:
+  #     $ todorb --help
+  #     $ todorb --show-actions
+  #
   def initialize options, argv
  
     @options = options
@@ -120,6 +146,7 @@ class Todo
     appname = @appname
     filename = @todo_serial_path
     h = {}
+    # check if serial file existing in curr dir. Else create
     if File.exists?(filename)
       File.open(filename).each { |line|
         #sn = $1 if line.match regex
