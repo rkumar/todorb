@@ -43,6 +43,14 @@ def delete_row filename, pattern = nil
   end
   _write filename, d
 end
+## 
+# inserts text in filename at lineno.
+#
+def insert_row filename, lineno, text
+  d = _read filename
+  d.insert(lineno, text)
+  _write filename, d
+end
 ##
 # read the given filename into an array
 def _read filename
@@ -60,6 +68,28 @@ def _write filename, array
   end
 end
 end # module
+## 
+# searches filelist array for pattern yielding filename, linenumber and line
+# Taken from http://facets.rubyforge.org/apidoc/index.html more filelist.
+def egrep(filelist, pattern)
+  filelist.each do |fn|
+    open(fn) do |inf|
+      count = 0
+
+      inf.each do |line|
+        count += 1
+        if pattern.match(line)
+          if block_given?
+            yield fn, count, line
+          else
+            puts "#{fn}:#{count}:#{line}"
+          end
+        end
+      end
+
+    end
+  end
+end
 
 if __FILE__ == $0
   include Sed
