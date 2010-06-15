@@ -10,19 +10,19 @@
 require 'rubygems'
 #require 'csv'
 require 'common/colorconstants'
-include ColorConstants
 require 'common/sed'
+include ColorConstants
 include Sed
 
 PRI_A = YELLOW + BOLD
 PRI_B = WHITE  + BOLD
 PRI_C = GREEN  + BOLD
 PRI_D = CYAN  + BOLD
-VERSION = "1.0"
+VERSION = "2.0"
 DATE = "2010-06-10"
 APPNAME = $0
 AUTHOR = "rkumar"
-TABSTOP = 4
+TABSTOP = 4 # indentation of subtasks
 
 class Todo
   # This class is responsible for all todo task related functionality.
@@ -201,11 +201,20 @@ class Todo
     _backup filename
     change_row filename, pattern, "#{appname}:#{number}"
   end
+  ##
+  # add a subtask
+  # @param [Array] 1. item under which to place, 2. text
+  # @return 
+  # @example:
+  #    addsub 1 "A task"   
+  #       => will get added as 1.1 or 1.2 etc
+  #    addsub 1.3 "a task"
+  #       => will get added as 1.3.x
   def addsub args
     under = args.shift
     text = args.join " "
     exit unless text
-    puts "under #{under} text: #{text} "
+    #puts "under #{under} text: #{text} "
     lastlinect = nil
     lastlinetext = nil
     egrep( [@todo_file_path], Regexp.new("#{under}\.[0-9]+	")) do |fn,ln,line|
@@ -214,7 +223,7 @@ class Todo
       puts line
     end
     if lastlinect
-      puts "Last line found #{lastlinetext} "
+      puts "Last line found #{lastlinetext} " if @verbose
       m = lastlinetext.match(/\.([0-9]+)	/)
       lastindex = m[1].to_i
       # check if it has subitems, find last one only for linecount
@@ -229,7 +238,7 @@ class Todo
         lastlinect = ln
       end
     end
-    puts "item is #{item} ::: line #{lastlinect} "
+    puts "item is #{item} ::: line #{lastlinect} " if @verbose
 
     # convert actual newline to C-a. slash n's are escapes so echo -e does not muck up.
     text.tr! "\n", ''
@@ -246,8 +255,6 @@ class Todo
     puts newtext
     _backup
     insert_row(@todo_file_path, lastlinect, newtext)
-    #File.open(@todo_file_path, "a") { | file| file.puts newtext }
-    # TODO add indent when writing.
   end
   def _backup filename=@todo_file_path
     require 'fileutils'
@@ -387,7 +394,7 @@ class Todo
   #
   # @param [Array] priority, single char A-Z, item or items
   # @return 
-  # @ example:
+  # @example:
   # pri A 5 6 7
   # pri 5 6 7 A
   # pri A 5 6 7 B 1 2 3
@@ -512,6 +519,8 @@ class Todo
   #
   # @param [Array, #include?] items to delete
   # @return 
+  # FIXME: if invalid item passed I have no way of giving error 
+  # FIXME: take subtasks also, what of recursive
   public
   def delete(args)
     puts "delete with #{args} "
@@ -576,13 +585,27 @@ class Todo
   end
   ##
   # Renumber while displaying
-  #
+  # FIXME: we lose subtasks !!!
   # @return [true, false] success or fail
   private
   def renumber
+    ## this did not account for subtasks
+    #@data.each_with_index { |row, i| 
+      #paditem = _paditem(i+1)  
+      #row[0] = paditem
+    #}
+    ## this accounts for subtasks
+    ctr = 0
     @data.each_with_index { |row, i| 
-      paditem = _paditem(i+1)  
-      row[0] = paditem
+      # main task, increment counter
+      if row[0] =~ /^ *[0-9]+$/
+        ctr += 1
+        paditem = _paditem(ctr)  
+        row[0] = paditem
+      else
+        # assume its a subtask, just change the outer number
+        row[0].sub!(/[0-9]+\./, "#{ctr}.")
+      end
     }
   end
   ##
@@ -656,15 +679,28 @@ class Todo
   ##
   # Redoes the numbering in the file.
   # Useful if the numbers have gone high and you want to start over.
+  # FIXME: we lose subtasks !!!
   def redo args
-    ctr = 1
-    require 'fileutils'
-    FileUtils.cp @todo_file_path, "#{@todo_file_path}.org"
+    #require 'fileutils'
+    #FileUtils.cp @todo_file_path, "#{@todo_file_path}.org"
+    _backup
     puts "Saved #{@todo_file_path} as #{@todo_file_path}.org"
+    #ctr = 1
+    #change_file @todo_file_path do |line|
+      #paditem = _paditem ctr
+      #line.sub!(/^ *[0-9]+/, paditem)
+      #ctr += 1
+    #end
+    ctr = 0
     change_file @todo_file_path do |line|
-      paditem = _paditem ctr
-      line.sub!(/^ *[0-9]+/, paditem)
-      ctr += 1
+      if line =~ /^ *[0-9]+\t/
+        ctr += 1
+        paditem = _paditem ctr
+        line.sub!(/^ *[0-9]+\t/, "#{paditem}#{@todo_delim}")
+      else
+        # assume its a subtask, just change the outer number
+        line.sub!(/[0-9]+\./, "#{ctr}.")
+      end
     end
     _set_serial_number ctr
     puts "Redone numbering"
