@@ -22,6 +22,7 @@ VERSION = "1.0"
 DATE = "2010-06-10"
 APPNAME = $0
 AUTHOR = "rkumar"
+TABSTOP = 4
 
 class Todo
   # This class is responsible for all todo task related functionality.
@@ -88,6 +89,7 @@ class Todo
     @actions["note"] = "Add a note to an item. \n\t #{$0} note <ITEM> <TEXT>"
     @actions["archive"] = "archive closed tasks to archive.txt"
     @actions["help"] = "Display help"
+    @actions["addsub"] = "Add a task under another . \n\t #{$0} add <TEXT>\n\t --component C --project P --priority X add <TEXT>"
 
     # adding some sort of aliases so shortcuts can be defined
     @aliases["open"] = ["status","open"]
@@ -103,7 +105,7 @@ class Todo
       b = [*ret, *args]
       @action = a
       @argv = b
-      puts " #{@action} ; argv: #{@argv} "
+      #puts " #{@action} ; argv: #{@argv} "
       return true
     end
     return false
@@ -198,6 +200,54 @@ class Todo
     filename = @todo_serial_path
     _backup filename
     change_row filename, pattern, "#{appname}:#{number}"
+  end
+  def addsub args
+    under = args.shift
+    text = args.join " "
+    exit unless text
+    puts "under #{under} text: #{text} "
+    lastlinect = nil
+    lastlinetext = nil
+    egrep( [@todo_file_path], Regexp.new("#{under}\.[0-9]+	")) do |fn,ln,line|
+      lastlinect = ln
+      lastlinetext = line
+      puts line
+    end
+    if lastlinect
+      puts "Last line found #{lastlinetext} "
+      m = lastlinetext.match(/\.([0-9]+)	/)
+      lastindex = m[1].to_i
+      # check if it has subitems, find last one only for linecount
+      egrep( [@todo_file_path], Regexp.new("#{under}\.#{lastindex}\.[0-9]+	")) do |fn,ln,line|
+        lastlinect = ln
+      end
+      lastindex += 1
+      item = "#{under}.#{lastindex}"
+    else
+      item = "#{under}.1"
+      egrep( [@todo_file_path], Regexp.new("#{under}	")) do |fn,ln,line|
+        lastlinect = ln
+      end
+    end
+    puts "item is #{item} ::: line #{lastlinect} "
+
+    # convert actual newline to C-a. slash n's are escapes so echo -e does not muck up.
+    text.tr! "\n", ''
+    Kernel.print("Got '#{text}'\n") if @verbose
+    paditem = _paditem(item)
+    print "item no is:#{paditem}:\n" if @verbose
+    priority = @options[:priority] ? " (#{@options[:priority]})" : ""
+    project  = @options[:project]  ? " +#{@options[:project]}"   : ""
+    component  = @options[:component]  ? " @#{@options[:component]}"   : ""
+    level = (item.split '.').length
+    indent = " " * (TABSTOP * (level-1))
+    newtext="#{indent}#{paditem}#{@todo_delim}[ ]#{priority}#{project}#{component} #{text} (#{@today})"
+    puts "Adding:"
+    puts newtext
+    _backup
+    insert_row(@todo_file_path, lastlinect, newtext)
+    #File.open(@todo_file_path, "a") { | file| file.puts newtext }
+    # TODO add indent when writing.
   end
   def _backup filename=@todo_file_path
     require 'fileutils'
