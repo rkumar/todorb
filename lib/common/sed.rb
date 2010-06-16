@@ -70,8 +70,11 @@ end
 end # module
 ## 
 # searches filelist array for pattern yielding filename, linenumber and line
+# @return [Array, nil] array of lines containing filename,lineno,line tab delimited
+#    or nil if nothing found
 # Taken from http://facets.rubyforge.org/apidoc/index.html more filelist.
 def egrep(filelist, pattern)
+  lines = []
   filelist.each do |fn|
     open(fn) do |inf|
       count = 0
@@ -82,12 +85,17 @@ def egrep(filelist, pattern)
           if block_given?
             yield fn, count, line
           else
-            puts "#{fn}:#{count}:#{line}"
+            #puts "#{fn}:#{count}:#{line}"
+            lines <<  "#{fn}#{@todo_delim}#{count}#{@todo_delim}#{line}"
           end
         end
       end
 
     end
+  end
+  unless block_given?
+    ret = lines.empty? nil:lines
+    return ret
   end
 end
 
