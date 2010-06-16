@@ -591,12 +591,31 @@ class Todo
   public
   def status(args)
     stat, items = _separate args
+    puts "Items: #{items} : stat #{stat} "
     status, newstatus = _resolve_status stat
     if status.nil?
       print_red "Status #{stat} is invalid!"
       exit 1
     end
-    ctr = change_items(items, /(\[.\])/, "[#{newstatus}]")
+    # this worked fine for single items, but not for recursive changes 
+    #ctr = change_items(items, /(\[.\])/, "[#{newstatus}]")
+    ctr = 0
+    change_file @todo_file_path do |line|
+      f = line.split @todo_delim
+      item = f[0].sub!(/\s*/, '')
+      if items.include? item
+        puts "Changed #{item} " if @options[:verbose]
+        ret = line.sub!(/(\[.\])/, "[#{newstatus}]")
+        ctr += 1 if ret
+      else
+        # check if line matches a subtask, then change
+        if item_matches_subtask? args, item
+          puts " #{item} matches subtask in line #{line} "
+          ret = line.sub!(/(\[.\])/, "[#{newstatus}]")
+          ctr += 1 if ret
+        end
+      end
+    end
     puts "Changed status of #{ctr} items"
     #change_items items do |item, line|
       #puts line if @verbose
@@ -619,7 +638,7 @@ class Todo
     args.each do |arg| 
       if arg =~ /^[a-zA-Z]/ 
         tag = arg
-      elsif arg =~ /^[0-9]+$/
+      elsif arg =~ /^[0-9\.]+$/
         items << arg
       end
     end
@@ -704,7 +723,8 @@ class Todo
   def change_items args, pattern=nil, replacement=nil
     changed_ctr = 0
     change_file @todo_file_path do |line|
-      item = line.match(/^ *([0-9]+)/)
+      item = line.match(/^ *([0-9\.]+)/)
+      puts "got item: #{item[1]} "
       if args.include? item[1]
         if pattern
           puts line if @verbose
@@ -785,6 +805,20 @@ class Todo
     #newstatus=$( echo $status | sed 's/^start/@/;s/^pend/P/;s/^close/x/;s/hold/H/;s/next/1/;s/^unstarted/ /' )
     return status, newstatus
   end
+  ##
+  # given some items, checks given line to see if it contains subtasks of given items
+  # if item is 3.1, does line contain 3.1.x 3.1.x.x etc or not
+  # @example
+  #     [1, 2, 3, 3.1, 3.1.1, 3.2, 3.3 ... ], "3.1.1"
+  def item_matches_subtask? items, item
+    items.each { |e| 
+      rx = Regexp.new "#{e}\."
+      m = item.match rx
+      return true if m
+    }
+    return false
+  end
+  ##     [1, 2, 3, 3.1, 3.1.1, 3.2, 3.3 ... ], " 3.1.1\t[ ] some task"
 
   def self.main args
     begin
