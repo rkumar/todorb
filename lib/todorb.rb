@@ -524,22 +524,64 @@ class Todo
   public
   def delete(args)
     puts "delete with #{args} "
-    delete_row @todo_file_path do |line|
-      #puts "line #{line} "
-      item = line.match(/^ *([0-9]+)/)
-      #puts "item #{item} "
-      if args.include? item[1]
-        if @options[:force]
-          true
-        else
-          puts line
-          print "Do you wish to delete (Y/N): "
-          STDOUT.flush
-          ans = STDIN.gets.chomp
-          ans =~ /[Yy]/
+    _backup
+    lines = _read @todo_file_path
+    args.each { |item| 
+      ans = "N"
+      rx = Regexp.new(" +#{item}#{@todo_delim}")
+      lines.delete_if { |line|
+        flag = line =~ rx
+        puts " #{item} : #{line} : #{flag} " if flag
+        if flag
+          if @options[:force]
+            true
+          else
+            puts line
+            print "Do you wish to delete (Y/N): "
+            STDOUT.flush
+            ans = STDIN.gets.chomp
+            ans =~ /[Yy]/
+          end
         end
+      }
+      if ans =~ /[Yy]/ && @options[:recursive]
+        puts "recursive"
+        #rx = Regexp.new("^\s*-\s*#{item}[\d\.]+#{@todo_delim}")
+        rx = Regexp.new("\s+#{item}\.") # #{@todo_delim}")
+        lines.delete_if { |line|
+          flag = line =~ rx
+          puts " rec #{item} : #{line} : #{flag} " if flag
+          if flag
+            if @options[:force]
+              true
+            else
+              puts line
+              print "Do you wish to delete (Y/N): "
+              STDOUT.flush
+              ans = STDIN.gets.chomp
+              ans =~ /[Yy]/
+            end
+          end
+        }
       end
-    end
+    } # args.each
+    _write @todo_file_path, lines
+    #delete_row @todo_file_path do |line|
+      ##puts "line #{line} "
+      #item = line.match(/^ *([0-9]+)/)
+      ##puts "item #{item} "
+      #if args.include? item[1]
+        #if @options[:force]
+          #true
+        #else
+          #puts line
+          #print "Do you wish to delete (Y/N): "
+          #STDOUT.flush
+          #ans = STDIN.gets.chomp
+          #ans =~ /[Yy]/
+        #end
+      #end
+    #end
   end
   ##
   # Change status of given items
@@ -779,6 +821,9 @@ class Todo
         }
         opts.on("--force", "force delete or add without prompting") do |v|
           options[:force] = v
+        end
+        opts.on("--recursive", "operate on subtasks also for delete, status") do |v|
+          options[:recursive] = v
         end
         opts.separator ""
         opts.separator "List options:"
