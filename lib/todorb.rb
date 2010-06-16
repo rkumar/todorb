@@ -68,7 +68,7 @@ class Todo
     @todo_file_path = @options[:file] || "TODO2.txt"
     #@todo_serial_path = File.expand_path("~/serial_numbers")
     @todo_serial_path = "serial_numbers"
-    @archive_path = "todo_archive.txt" # should take path of todo and put there TODO:
+    @archive_path = "todo_archive.txt" 
     @todo_delim = "\t"
     @appname = File.basename( Dir.getwd ) #+ ".#{$0}"
     t = Time.now
@@ -95,7 +95,7 @@ class Todo
     @aliases["open"] = ["status","open"]
     @aliases["close"] = ["status","closed"]
 
-    # TODO config
+    # TODO: config
     # we need to read up from config file and update
   end
   def check_aliases action, args
@@ -273,6 +273,10 @@ class Todo
   def _paditem item
     return sprintf("%3s", item)
   end
+  ##
+  # populates array with open tasks (or all if --show-all)
+  # DO NOT USE in conjunction with save_array since this is only open tasks
+  # Use load_array with save_array
   def populate
     check_file
     @ctr = 0
@@ -401,7 +405,8 @@ class Todo
   # pri 5 6 7 A 1 2 3 B
 
   def pri args
-    populate
+    #populate # populate removed closed task so later saving will lose tasks
+    load_array
     changeon = nil
     items = []
     prior = nil
@@ -410,7 +415,7 @@ class Todo
     ## if the first arg is item/s then wait for priority and use that
     if args[0] =~ /^[A-Z]$/ 
       changeon = :ITEM
-    elsif args[0] =~ /^[0-9]+$/
+    elsif args[0] =~ /^[0-9\.]+$/
       changeon = :PRI
     else
       puts "ERROR! "
@@ -425,7 +430,7 @@ class Todo
           items.each { |i| _pri(i, prior) }
           items = []
         end
-      elsif arg =~ /^[0-9]+$/
+      elsif arg =~ /^[0-9\.]+$/
         item = arg #$1
         if changeon == :ITEM
           puts " changing #{item} to #{prior} "
@@ -459,8 +464,18 @@ class Todo
       end
     end
   end
+  ##
+  # load data into array as item and task
+  # @see save_array to write
+  def load_array
+    File.open(@todo_file_path).each do |line|
+      row = line.chomp.split "\t"
+      @data << row
+    end
+  end
   ## 
   # saves the task array to disk
+  # Please use load_array to load, and not populate
   def save_array
     File.open(@todo_file_path, "w") do |file| 
       @data.each { |row| file.puts "#{row[0]}\t#{row[1]}" }
@@ -471,8 +486,9 @@ class Todo
   private
   def _pri item, pri
     paditem = _paditem(item)
+    rx = Regexp.new "\s+#{item}$"
     @data.each { |row| 
-      if row[0] == paditem
+      if row[0] =~ rx
         puts " #{row[0]} : #{row[1]} "
         if row[1] =~ /\] (\([A-Z]\) )/
           row[1].sub!(/\([A-Z]\) /,"")
@@ -488,6 +504,7 @@ class Todo
   end
   ##
   # Appends a tag to task
+  # FIXME: check with subtasks
   #
   # @param [Array] items and tag, or tag and items
   # @return 
@@ -500,13 +517,13 @@ class Todo
     args.each do |arg| 
       if arg =~ /^[a-zA-Z]/ 
         tag = arg
-      elsif arg =~ /^[0-9]+$/
+      elsif arg =~ /^[0-9\.]+$/
         items << arg
       end
     end
     #items.each { |i| change_row }
     change_file @todo_file_path do |line|
-      item = line.match(/^ *([0-9]+)/)
+      item = line.match(/^ *([0-9\.]+)/)
       if items.include? item[1]
         puts "#{line}" if @verbose
         line.sub!(/$/, " @#{tag}")
@@ -520,7 +537,6 @@ class Todo
   # @param [Array, #include?] items to delete
   # @return 
   # FIXME: if invalid item passed I have no way of giving error 
-  # FIXME: take subtasks also, what of recursive
   public
   def delete(args)
     puts "delete with #{args} "
@@ -646,7 +662,6 @@ class Todo
   end
   ##
   # Renumber while displaying
-  # FIXME: we lose subtasks !!!
   # @return [true, false] success or fail
   private
   def renumber
@@ -741,7 +756,6 @@ class Todo
   ##
   # Redoes the numbering in the file.
   # Useful if the numbers have gone high and you want to start over.
-  # FIXME: we lose subtasks !!!
   def redo args
     #require 'fileutils'
     #FileUtils.cp @todo_file_path, "#{@todo_file_path}.org"
