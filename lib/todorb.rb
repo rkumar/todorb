@@ -841,6 +841,15 @@ class Todo
       options = {}
       options[:verbose] = false
       options[:colorize] = true
+      # adding some env variable pickups, so you don't have to keep passing.
+      showall = ENV["TODO_SHOW_ALL"]
+      if showall
+        options[:show_all] = (showall == "0") ? false:true
+      end
+      plain = ENV["TODO_PLAIN"]
+      if plain
+        options[:colorize] = (plain == "0") ? false:true
+      end
 
       OptionParser.new do |opts|
         opts.banner = "Usage: #{$0} [options] action"
@@ -892,7 +901,7 @@ class Todo
         opts.on("--hide-numbering", "hide-numbering while listing ") do |v|
           options[:hide_numbering] = v
         end
-        opts.on("--show-all", "show all tasks (incl closed)") do |v|
+        opts.on("--[no-]show-all", "show all tasks (incl closed)") do |v|
           options[:show_all] = v
         end
 
