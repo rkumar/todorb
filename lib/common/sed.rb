@@ -73,7 +73,8 @@ end # module
 # @return [Array, nil] array of lines containing filename,lineno,line tab delimited
 #    or nil if nothing found
 # Taken from http://facets.rubyforge.org/apidoc/index.html more filelist.
-def egrep(filelist, pattern)
+# egrepoptions - count only, linenumber, filename, invert etc
+def egrep(filelist, pattern, egrepoptions={})
   lines = []
   filelist.each do |fn|
     open(fn) do |inf|
