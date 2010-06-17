@@ -52,6 +52,10 @@ class Todo
   #     $ todorb --help
   #     $ todorb --show-actions
   #
+  # == TODO:
+  # CLEANUP: add method for extract_item from line since scattered everywhere DONE, to use
+  # CLEANUP: add method for checking if string matches an item: is_item?
+  #
   def initialize options, argv
  
     @options = options
@@ -75,6 +79,8 @@ class Todo
     @now = t.strftime("%Y-%m-%d %H:%M:%S")
     @today = t.strftime("%Y-%m-%d")
     @verbose = @options[:verbose]
+    $valid_array = false
+    # menu MENU
     #@actions = %w[ list add pri priority depri tag del delete status redo note archive help]
     @actions = {}
     @actions["list"] = "List all tasks.\n\t --hide-numbering --renumber"
@@ -88,16 +94,27 @@ class Todo
     @actions["redo"] = "Renumbers the todo file starting 1"
     @actions["note"] = "Add a note to an item. \n\t #{$0} note <ITEM> <TEXT>"
     @actions["archive"] = "archive closed tasks to archive.txt"
+    @actions["copyunder"] = "Move first item under second (as a subtask). aka cu"
+
     @actions["help"] = "Display help"
     @actions["addsub"] = "Add a task under another . \n\t #{$0} add <TEXT>\n\t --component C --project P --priority X add <TEXT>"
 
     # adding some sort of aliases so shortcuts can be defined
     @aliases["open"] = ["status","open"]
     @aliases["close"] = ["status","closed"]
+    @aliases["cu"] = ["copyunder"]
 
+    @copying = false # used by copyunder when it calls addsub
     # TODO: config
     # we need to read up from config file and update
   end
+  ##
+  # check whether this action is mapped to some alias and *changes*
+  # @action and @argv if true.
+  # @param [String] action asked by user
+  # @param [Array] rest of args on command line
+  # @return [Boolean] whether it is mapped or not.
+  #
   def check_aliases action, args
     ret = @aliases[action]
     if ret
@@ -110,7 +127,6 @@ class Todo
     end
     return false
   end
-  # menu MENU
   def run
     @action = @argv[0] || @todo_default_action
     @action = @action.downcase
@@ -250,7 +266,12 @@ class Todo
     component  = @options[:component]  ? " @#{@options[:component]}"   : ""
     level = (item.split '.').length
     indent = " " * (TABSTOP * (level-1))
-    newtext="#{indent}#{paditem}#{@todo_delim}[ ]#{priority}#{project}#{component} #{text} (#{@today})"
+    newtext=nil
+    if @copying
+      newtext="#{indent}#{item}#{@todo_delim}#{text}"
+    else
+      newtext="#{indent}#{paditem}#{@todo_delim}[ ]#{priority}#{project}#{component} #{text} (#{@today})"
+    end
     puts "Adding:"
     puts newtext
     _backup
@@ -278,6 +299,7 @@ class Todo
   # DO NOT USE in conjunction with save_array since this is only open tasks
   # Use load_array with save_array
   def populate
+    $valid_array = false # this array object should not be saved
     check_file
     @ctr = 0
     @total = 0
@@ -472,11 +494,14 @@ class Todo
       row = line.chomp.split "\t"
       @data << row
     end
+    $valid_array = true
   end
   ## 
   # saves the task array to disk
   # Please use load_array to load, and not populate
   def save_array
+    raise "Cannot save array! Please use load_array to load" if $valid_array == false
+
     File.open(@todo_file_path, "w") do |file| 
       @data.each { |row| file.puts "#{row[0]}\t#{row[1]}" }
     end
@@ -544,7 +569,7 @@ class Todo
     lines = _read @todo_file_path
     args.each { |item| 
       ans = "N"
-      rx = Regexp.new(" +#{item}#{@todo_delim}")
+      rx = regexp_item item # Regexp.new(" +#{item}#{@todo_delim}")
       lines.delete_if { |line|
         flag = line =~ rx
         puts " #{item} : #{line} : #{flag} " if flag
@@ -724,13 +749,64 @@ class Todo
     file.close
     puts "Archived #{ctr} tasks."
   end
+  # Copy given item under second item
+  #
+  # @param [Array] 2 items, move first under second
+  # @return [Boolean] success or fail
+  public
+  def copyunder(args)
+    if args.nil? or args.count != 2
+      die "copyunder expects only 2 args: from and to item, both existing"
+    end
+    from = args[0]
+    to = args[1]
+    # extract item from
+    lastlinetext = nil
+    rx = regexp_item from
+    egrep( [@todo_file_path], rx) do |fn,ln,line|
+      lastlinect = ln
+      lastlinetext = line
+      puts line
+    end
+    # removing everything from start to status inclusive
+    lastlinetext.sub!(/^.*\[/,'[').chomp!
+    puts lastlinetext
+    @copying = true
+    addsub [to, lastlinetext]
+    # remove item number and status ? 
+    # give to addsub to add.
+    # delete from
+    delete_item from
+    # take care of data in addsub (if existing, and also /
+  end
   ##
   # For given items, ...
   #
   # @param [Array, #include?] items to delete
-  # @return [true, false] success or fail
+  # @return [Boolean] success or fail
   public
   def CHANGEME(args)
+  end
+  ## does a straight delete of an item, no questions asked
+  # internal use only.
+  def delete_item item
+    filename=@todo_file_path
+    d = _read filename
+    d.delete_if { |row| line_contains_item?(row, item) }
+    _write filename, d
+  end
+  def line_contains_item? line, item
+    rx = regexp_item item
+    return line.match rx
+  end
+  # return a regexp for an item to do matches on
+  def regexp_item item
+    Regexp.new("^ +#{item}#{@todo_delim}")
+  end
+  def extract_item line
+      item = line.match(/^ *([0-9\.]+)/)
+      return nil if item.nil?
+      return item[1]
   end
   ##
   # yields lines from file that match the given item
