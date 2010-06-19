@@ -1,0 +1,12 @@
+= todorb 0.2.2, 2010-06-15
+* Added subtask addition. One may add subtasks under a task.
+* This effects everything! Deleting a task, you may wanna delete all
+children. Changing the status of a task may affect all children.
+Renumberign and redoing etc affects subtasks. The impact of this change
+is quite huge.
+
+= todorb 0.2.1
+* Version without subtask. This is a simpler version which i prefer.
+
+
+## vim:tw=72:ai:formatoptions=tcqln:nocindent
