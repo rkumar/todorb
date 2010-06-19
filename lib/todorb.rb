@@ -538,6 +538,9 @@ class Todo
   # load data into array as item and task
   # @see save_array to write
   def load_array
+    #return if $valid_array
+    $valid_array = false
+    @data = []
     File.open(@todo_file_path).each do |line|
       row = line.chomp.split "\t"
       @data << row
@@ -673,6 +676,32 @@ class Todo
   # @return [true, false] success or fail
   public
   def status(args)
+    stat, items = _separate args #, /^[a-zA-Z]/ 
+    verbose "Items: #{items} : stat #{stat} "
+    status, newstatus = _resolve_status stat
+    if status.nil?
+      die "Status #{stat} is invalid!"
+    end
+    # this worked fine for single items, but not for recursive changes 
+    #ctr = change_items(items, /(\[.\])/, "[#{newstatus}]")
+    totalitems = []
+    #ret = line.sub!(/(\[.\])/, "[#{newstatus}]")
+    load_array
+    items.each { |item| 
+      a = get_item_subs item
+      if a
+        a.each { |e| 
+          totalitems << e[0].strip
+        }
+      else
+        # perhaps I should pass item into total and let c_i handle error message
+        warning "No tasks found for #{item}"
+      end
+    }
+    new_change_items(totalitems, /(\[.\])/, "[#{newstatus}]")
+    0
+  end
+  def oldstatus(args)
     stat, items = _separate args #, /^[a-zA-Z]/ 
     verbose "Items: #{items} : stat #{stat} "
     status, newstatus = _resolve_status stat
