@@ -23,6 +23,7 @@ DATE = "2010-06-10"
 APPNAME = $0
 AUTHOR = "rkumar"
 TABSTOP = 4 # indentation of subtasks
+ERRCODE = 1
 
 class Todo
   # This class is responsible for all todo task related functionality.
@@ -75,7 +76,10 @@ class Todo
     @archive_path = "todo_archive.txt" 
     @todo_delim = "\t"
     @appname = File.basename( Dir.getwd ) #+ ".#{$0}"
+    # in order to support the testing framework
     t = Time.now
+    ut = ENV["TODO_TEST_TIME"]
+    t = Time.at(ut.to_i) if ut
     @now = t.strftime("%Y-%m-%d %H:%M:%S")
     @today = t.strftime("%Y-%m-%d")
     @verbose = @options[:verbose]
@@ -84,6 +88,7 @@ class Todo
     #@actions = %w[ list add pri priority depri tag del delete status redo note archive help]
     @actions = {}
     @actions["list"] = "List all tasks.\n\t --hide-numbering --renumber"
+    @actions["listsub"] = "List all tasks.\n\t --hide-numbering --renumber"
     @actions["add"] = "Add a task. \n\t #{$0} add <TEXT>\n\t --component C --project P --priority X add <TEXT>"
     @actions["pri"] = "Add priority to task. \n\t #{$0} pri <ITEM> [A-Z]"
     @actions["priority"] = "Same as pri"
@@ -93,6 +98,7 @@ class Todo
     @actions["status"] = "Change the status of a task. \n\t #{$0} status <STAT> <ITEM>\n\t<STAT> are open closed started pending hold next"
     @actions["redo"] = "Renumbers the todo file starting 1"
     @actions["note"] = "Add a note to an item. \n\t #{$0} note <ITEM> <TEXT>"
+    @actions["tag"] = "Add a tag to an item/s. \n\t #{$0} tag <ITEMS> <TEXT>"
     @actions["archive"] = "archive closed tasks to archive.txt"
     @actions["copyunder"] = "Move first item under second (as a subtask). aka cu"
 
@@ -127,6 +133,10 @@ class Todo
     end
     return false
   end
+  ## 
+  # runs method after checking if valid or alias.
+  # If not found prints help.
+  # @return [0, ERRCODE] success 0.
   def run
     @action = @argv[0] || @todo_default_action
     @action = @action.downcase
@@ -134,17 +144,21 @@ class Todo
     @action.sub!(/^del$/, 'delete')
 
 
+    ret = 0
     @argv.shift
     if @actions.include? @action
-      send(@action, @argv)
+      ret = send(@action, @argv)
     else
       # check aliases
       if check_aliases @action, @argv
-        send(@action, @argv)
+        ret = send(@action, @argv)
       else
         help @argv
+        ret = ERRCODE
       end
     end
+    ret ||= 0
+    return ret
   end
   def help args
     puts "Actions are "
@@ -152,6 +166,7 @@ class Todo
     puts " "
     puts "Aliases are "
     @aliases.each_pair { |name, val| puts "#{name}:\t#{val.join(' ')}" }
+    0
   end
   def add args
     if args.empty?
@@ -159,7 +174,7 @@ class Todo
       STDOUT.flush
       text = gets.chomp
       if text.empty?
-        exit 1
+        exit ERRCODE
       end
       Kernel.print("You gave me '#{text}'") if @verbose
     else
@@ -170,16 +185,18 @@ class Todo
     text.tr! "\n", ''
     Kernel.print("Got '#{text}'\n") if @verbose
     item = _get_serial_number
+    die "Could not get a new item number" if item.nil?
     paditem = _paditem(item)
-    print "item no is:#{paditem}:\n" if @verbose
+    verbose "item no is:#{paditem}:\n" 
     priority = @options[:priority] ? " (#{@options[:priority]})" : ""
     project  = @options[:project]  ? " +#{@options[:project]}"   : ""
     component  = @options[:component]  ? " @#{@options[:component]}"   : ""
     newtext="#{paditem}#{@todo_delim}[ ]#{priority}#{project}#{component} #{text} (#{@today})"
+    File.open(@todo_file_path, "a") { | file| file.puts newtext }
     puts "Adding:"
     puts newtext
-    File.open(@todo_file_path, "a") { | file| file.puts newtext }
 
+    0
   end
   ##
   # reads serial_number file, returns serialno for this app
@@ -233,13 +250,14 @@ class Todo
     #puts "under #{under} text: #{text} "
     lastlinect = nil
     lastlinetext = nil
+    # look for last item below given task (if there is)
     egrep( [@todo_file_path], Regexp.new("#{under}\.[0-9]+	")) do |fn,ln,line|
       lastlinect = ln
       lastlinetext = line
       puts line
     end
     if lastlinect
-      puts "Last line found #{lastlinetext} " if @verbose
+      verbose "Last line found #{lastlinetext} " 
       m = lastlinetext.match(/\.([0-9]+)	/)
       lastindex = m[1].to_i
       # check if it has subitems, find last one only for linecount
@@ -249,12 +267,18 @@ class Todo
       lastindex += 1
       item = "#{under}.#{lastindex}"
     else
+      # no subitem found, so this is first
       item = "#{under}.1"
+      # get line of parent
+      found = nil
       egrep( [@todo_file_path], Regexp.new("#{under}	")) do |fn,ln,line|
         lastlinect = ln
+        found = true
       end
+      die "Task #{under} not found" unless found
     end
-    puts "item is #{item} ::: line #{lastlinect} " if @verbose
+    die "Could not determine which line to insert under" unless lastlinect
+    verbose "item is #{item} ::: line #{lastlinect} " 
 
     # convert actual newline to C-a. slash n's are escapes so echo -e does not muck up.
     text.tr! "\n", ''
@@ -272,9 +296,10 @@ class Todo
     else
       newtext="#{indent}#{paditem}#{@todo_delim}[ ]#{priority}#{project}#{component} #{text} (#{@today})"
     end
+    raise "Cannot insert blank text. Programmer error!" unless newtext
+    _backup
     puts "Adding:"
     puts newtext
-    _backup
     insert_row(@todo_file_path, lastlinect, newtext)
   end
   def _backup filename=@todo_file_path
@@ -286,7 +311,21 @@ class Todo
   end
   def die text
     $stderr.puts text
-    exit 1
+    exit ERRCODE
+  end
+  # prints messages to stderr
+  # All messages should go to stderr.
+  # Keep stdout only for output which can be used by other programs
+  def message text
+    $stderr.puts text
+  end
+  # print to stderr only if verbose set
+  def verbose text
+    message(text) if @options[:verbose]
+  end
+  # print to stderr only if verbose set
+  def warning text
+    print_red("WARNING: #{text}") 
   end
   ##
   # for historical reasons, I pad item to 3 spaces in text file.
@@ -344,9 +383,9 @@ class Todo
     sort if @options[:sort]
     renumber if @options[:renumber]
     colorize # << currently this is where I print !! Since i colorize the whole line
-    puts 
+    puts " " 
     puts " #{@data.length} of #{@total} rows displayed from #{@todo_file_path} "
-
+    return 0
   end
   def print_todo
     @ctr = 0
@@ -423,58 +462,66 @@ class Todo
   # @example:
   # pri A 5 6 7
   # pri 5 6 7 A
-  # pri A 5 6 7 B 1 2 3
-  # pri 5 6 7 A 1 2 3 B
+  # -- NO LONGER this complicated system  pri A 5 6 7 B 1 2 3
+  # -- NO LONGER this complicated system  pri 5 6 7 A 1 2 3 B
 
+  # 2010-06-19 15:21 total rewrite, so we fetch item from array and warn if absent.
   def pri args
+    errors = 0
+    ctr = 0
     #populate # populate removed closed task so later saving will lose tasks
     load_array
-    changeon = nil
-    items = []
-    prior = nil
-    item = nil
     ## if the first arg is priority then following items all have that priority
     ## if the first arg is item/s then wait for priority and use that
-    if args[0] =~ /^[A-Z]$/ 
-      changeon = :ITEM
-    elsif args[0] =~ /^[0-9\.]+$/
-      changeon = :PRI
-    else
-      puts "ERROR! "
-      exit 1
-    end
-    puts "args 0 is #{args[0]} "
-    args.each do |arg| 
-      if arg =~ /^[A-Z]$/ 
-        prior = arg #$1
-        if changeon == :PRI
-          puts " changing previous items #{items} to #{prior} "
-          items.each { |i| _pri(i, prior) }
-          items = []
+    prior, items = _separate args, /^[A-Z]$/ 
+    total = items.count
+    die "#{@action}: priority expected [A-Z]" unless prior
+    die "#{@action}: items expected" unless items
+    verbose "args 0 is #{args[0]}. pri #{prior} items #{items} "
+    items.each do |item| 
+      row = get_item(item)
+      if row
+        puts " #{row[0]} : #{row[1]} "
+        # remove existing priority if there
+        if row[1] =~ /\] (\([A-Z]\) )/
+          row[1].sub!(/\([A-Z]\) /,"")
         end
-      elsif arg =~ /^[0-9\.]+$/
-        item = arg #$1
-        if changeon == :ITEM
-          puts " changing #{item} to #{prior} "
-          _pri(item, prior)
+        ret = row[1].sub!(/\] /,"] (#{prior}) ")
+        if ret
+          puts " #{GREEN}#{row[0]} : #{row[1]} #{CLEAR}"
+          ctr += 1
         else
-          items << item
+          die "Error in sub(): #{row}.\nNothing saved. "
         end
       else
-        puts "ERROR in arg :#{arg}:"
+        errors += 1
+        warning "#{item} not found."
       end
     end
-    save_array
+
+    message "#{errors} error/s" if errors > 0
+    if ctr > 0
+      puts "Changed priority of #{ctr} task/s"
+      save_array 
+      return 0 
+    end
+    return ERRCODE
   end
   ##
-  # Reove the priority of a task
+  # Remove the priority of a task
   #
   # @param [Array] items to deprioritize
   # @return 
-  public
   def depri(args)
-    populate
-    puts "depri got #{args} "
+    new_change_items args, /\([A-Z]\) /,""
+  end
+  public
+  def _depri(args)
+    load_array
+    puts "depri got #{args} " if @verbose 
+    args.each { |item|  
+    
+    }
     each do |row|
       item = row[0].sub(/^[ -]*/,'')
       if args.include? item
@@ -485,6 +532,7 @@ class Todo
         end
       end
     end
+    save_array 
   end
   ##
   # load data into array as item and task
@@ -508,6 +556,7 @@ class Todo
   end
   ## 
   # change priority of given item to priority in array
+  # @ deprecated now DELETE TODO:
   private
   def _pri item, pri
     paditem = _paditem(item)
@@ -519,7 +568,7 @@ class Todo
           row[1].sub!(/\([A-Z]\) /,"")
         end
         row[1].sub!(/\] /,"] (#{pri}) ")
-        puts " #{RED}#{row[0]} : #{row[1]} #{CLEAR}"
+        puts " #{GREEN}#{row[0]} : #{row[1]} #{CLEAR}"
         return true
       end
     }
@@ -533,8 +582,16 @@ class Todo
   #
   # @param [Array] items and tag, or tag and items
   # @return 
-  public
   def tag(args)
+    tag, items = _separate args
+    #new_change_items items do |item, row|
+      #ret = row[1].sub!(/ (\([0-9]{4})/, " @#{tag} "+'\1')
+      #ret
+    #end
+    new_change_items(items, / (\([0-9]{4})/, " @#{tag} "+'\1')
+  end
+  public
+  def oldtag(args)
     puts "tags args #{args} "
     items_first = items_first? args
     items = []
@@ -564,7 +621,7 @@ class Todo
   # FIXME: if invalid item passed I have no way of giving error 
   public
   def delete(args)
-    puts "delete with #{args} "
+    puts "delete with #{args} " if @verbose 
     _backup
     lines = _read @todo_file_path
     args.each { |item| 
@@ -607,82 +664,92 @@ class Todo
       end
     } # args.each
     _write @todo_file_path, lines
-    #delete_row @todo_file_path do |line|
-      ##puts "line #{line} "
-      #item = line.match(/^ *([0-9]+)/)
-      ##puts "item #{item} "
-      #if args.include? item[1]
-        #if @options[:force]
-          #true
-        #else
-          #puts line
-          #print "Do you wish to delete (Y/N): "
-          #STDOUT.flush
-          #ans = STDIN.gets.chomp
-          #ans =~ /[Yy]/
-        #end
-      #end
-    #end
+    0
   end
   ##
   # Change status of given items
   #
-  # @param [Array, #include?] items to delete
+  # @param [Array, #include?] items to change status of
   # @return [true, false] success or fail
   public
   def status(args)
-    stat, items = _separate args
-    puts "Items: #{items} : stat #{stat} "
+    stat, items = _separate args #, /^[a-zA-Z]/ 
+    verbose "Items: #{items} : stat #{stat} "
     status, newstatus = _resolve_status stat
     if status.nil?
-      print_red "Status #{stat} is invalid!"
-      exit 1
+      die "Status #{stat} is invalid!"
     end
     # this worked fine for single items, but not for recursive changes 
     #ctr = change_items(items, /(\[.\])/, "[#{newstatus}]")
+    total = items.count
     ctr = 0
+    errors = 0
+    erritems = []
     change_file @todo_file_path do |line|
       f = line.split @todo_delim
       item = f[0].sub!(/\s*/, '')
       if items.include? item
-        puts "Changed #{item} " if @options[:verbose]
+        items.delete item
         ret = line.sub!(/(\[.\])/, "[#{newstatus}]")
-        ctr += 1 if ret
+        if ret
+          ctr += 1 
+          verbose "Changed #{item} " 
+        else
+          errors += 1
+          erritems << item
+          warning "Failed to change #{item}: #{line}"
+        end
       else
         # check if line matches a subtask, then change
         if item_matches_subtask? args, item
-          puts " #{item} matches subtask in line #{line} "
+          items.delete item
           ret = line.sub!(/(\[.\])/, "[#{newstatus}]")
-          ctr += 1 if ret
+          if ret
+            ctr += 1 
+            verbose "Changed #{item} " 
+          else
+            errors += 1
+            erritems << item
+            warning "Failed to change #{item}: #{line}"
+          end
         end
       end
     end
-    puts "Changed status of #{ctr} items"
+    puts "Changed status of #{ctr} tasks"
+    if !items.empty?
+      message "The following tasks were not found #{items}"
+    end
+    if !erritems.empty?
+      message "The following tasks were not updated due to error in sub() #{erritems}"
+    end
+    return ERRCODE if errors > 0 or ctr == 0
+    return 0 if total == ctr
+    return ERRCODE
     #change_items items do |item, line|
       #puts line if @verbose
       #line.sub!(/(\[.\])/, "[#{newstatus}]")
       #puts "#{RED}#{line}#{CLEAR}" if @verbose
     #end
   end
-  ## shortcut for "status close"
-  #def close args
-    #status( [ "closed", *args])
-  #end
   ##
   # separates args into tag or subcommand and items
   # This allows user to pass e.g. a priority first and then item list
   # or item list first and then priority. 
   # This can only be used if the tag or pri or status is non-numeric and the item is numeric.
-  def _separate args
+  def _separate args, pattern=nil #/^[a-zA-Z]/ 
     tag = nil
     items = []
     args.each do |arg| 
-      if arg =~ /^[a-zA-Z]/ 
-        tag = arg
-      elsif arg =~ /^[0-9\.]+$/
+      if arg =~ /^[0-9\.]+$/
         items << arg
+      else
+        tag = arg
+        if pattern
+          die "#{@action}: #{arg} appears invalid." if arg !~ pattern
+        end
       end
     end
+    items = nil if items.empty?
     return tag, items
   end
   ##
@@ -718,14 +785,11 @@ class Todo
   def note(args)
     _backup
     text = args.pop
-    change_items args do |item, line|
-      m = line.match(/^ */)
+    new_change_items args do |item, row|
+      m = row[0].match(/^ */)
       indent = m[0]
-      puts line if @verbose
-      # we place the text before the date, adding a C-a and indent
-      # At printing the C-a is replaced with a newline and some spaces
-      ret = line.sub!(/ (\([0-9]{4})/," #{indent}* #{text} "+'\1')
-      print_red line if @verbose
+      ret = row[1].sub!(/ (\([0-9]{4})/," #{indent}* #{text} "+'\1')
+      ret
     end
   end
   ##
@@ -780,12 +844,104 @@ class Todo
     # take care of data in addsub (if existing, and also /
   end
   ##
-  # For given items, ...
+  # Get row for given item or nil.
   #
-  # @param [Array, #include?] items to delete
-  # @return [Boolean] success or fail
+  # @param [String] item to retrieve
+  # @return [Array, nil] success or fail
+  # Returns row from @data as String[2] comprising item and rest of line.
   public
-  def CHANGEME(args)
+  def get_item(item)
+    raise "Please load array first!" if @data.empty?
+    verbose "get_item got #{item}."
+    #rx = regexp_item(item)
+    rx = Regexp.new("^ +#{item}$")
+    @data.each { |row|
+      verbose "    get_item read #{row[0]}."
+      return row if row[0] =~ rx
+    }
+    # not found
+    return nil
+  end
+  ## 
+  # list task and its subtasks
+  #  just testing this out
+  def listsub(args)
+    load_array
+    args.each { |item|  
+      a = get_item_subs item
+      puts "for #{item} "
+      a.each { |e| puts " #{e[0]} #{e[1]} " }
+    }
+    0
+  end
+  # get item and its subtasks
+  # (in an attempt to make recursive changes cleaner)
+  # @param item (taken from command line)
+  # @return [Array, nil] row[] objects
+  def get_item_subs(item)
+    raise "Please load array first!" if @data.empty?
+    verbose "get_item got #{item}."
+    #rx = regexp_item(item)
+    rx = Regexp.new("^ +#{item}$")
+    rx2 = Regexp.new("^ +#{item}\.")
+    rows = []
+    @data.each { |row|
+      verbose "    get_item read #{row[0]}."
+      if row[0] =~ rx
+        rows << row 
+        rx = rx2
+      end
+    }
+    return nil if rows.empty?
+    return rows
+  end
+  ##
+  # For given items, search replace or yield item and row[]
+  #
+  # @param [Array, #each] items to change
+  # @yield item, row[] - split of line on tab.
+  # @return [0, ERRCODE] success or fail
+  public
+  def new_change_items items, pattern=nil, replacement=nil
+    ctr = errors = 0
+    #tag, items = _separate args
+    # or items = args
+    die "#{@action}: items expected" unless items
+    total = items.count
+    load_array
+    items.each do |item| 
+      row = get_item(item)
+      if row
+        if pattern
+          puts " #{row[0]} : #{row[1]} " if @verbose 
+          ret = row[1].sub!(pattern, replacement)
+          if ret
+            puts " #{GREEN}#{row[0]} : #{row[1]} #{CLEAR}"
+            ctr += 1
+          else
+            # this is since there could be a programmer error.
+            die "Possible error in sub() - No replacement: #{row[0]} : #{row[1]}.\nNothing saved. "
+          end
+        else
+          puts " #{row[0]} : #{row[1]} " if @verbose 
+          ret = yield item, row
+          if ret
+            ctr += 1 
+            puts " #{GREEN}#{row[0]} : #{row[1]} #{CLEAR}"
+          end
+        end
+      else
+        errors += 1
+        warning "#{item} not found."
+      end
+    end
+    message "#{errors} error/s" if errors > 0
+    if ctr > 0
+      puts "Changed #{ctr} task/s"
+      save_array 
+      return 0 
+    end
+    return ERRCODE
   end
   ## does a straight delete of an item, no questions asked
   # internal use only.
@@ -799,7 +955,11 @@ class Todo
     rx = regexp_item item
     return line.match rx
   end
-  # return a regexp for an item to do matches on
+  def row_contains_item? row, item
+    rx = Regexp.new("^ +#{item}")
+    return row[0].match rx
+  end
+  # return a regexp for an item to do matches on - WARNING INCLUDES TAB
   def regexp_item item
     Regexp.new("^ +#{item}#{@todo_delim}")
   end
@@ -815,7 +975,7 @@ class Todo
     changed_ctr = 0
     change_file @todo_file_path do |line|
       item = line.match(/^ *([0-9\.]+)/)
-      puts "got item: #{item[1]} "
+      puts "got item: #{item[1]} " if @verbose 
       if args.include? item[1]
         if pattern
           puts line if @verbose
@@ -911,6 +1071,7 @@ class Todo
   ##     [1, 2, 3, 3.1, 3.1.1, 3.2, 3.3 ... ], " 3.1.1\t[ ] some task"
 
   def self.main args
+    ret = nil
     begin
       # http://www.ruby-doc.org/stdlib/libdoc/optparse/rdoc/classes/OptionParser.html
       require 'optparse'
@@ -992,15 +1153,14 @@ class Todo
             # changing dir is important so that serial_number file is the current one.
             FileUtils.cd dir
           else
-            puts "#{RED}#{v}: no such directory #{CLEAR}"
-            exit 1
+            die "#{RED}#{v}: no such directory #{CLEAR}"
           end
         end
         # No argument, shows at tail.  This will print an options summary.
         # Try it and see!
         opts.on_tail("-h", "--help", "Show this message") do
           puts opts
-          exit
+          exit 0
         end
 
         opts.on_tail("--show-actions", "show actions ") do |v|
@@ -1025,10 +1185,13 @@ class Todo
       #raise "-f FILENAME is mandatory" unless options[:file]
 
       todo = Todo.new(options, args)
-      todo.run
+      ret = todo.run
     ensure
     end
+  return ret
   end # main
 end # class Todo
 
-Todo.main(ARGV) if __FILE__ == $0
+if __FILE__ == $0
+  exit Todo.main(ARGV) 
+end
