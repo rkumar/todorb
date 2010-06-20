@@ -73,6 +73,7 @@ class Todo
     #@app_serial_path = File.expand_path("~/serial_numbers")
     @app_serial_path = "serial_numbers"
     @archive_path = "todo_archive.txt" 
+    @deleted_path = "todo_deleted.txt"
     @todo_delim = "\t"
     @appname = File.basename( Dir.getwd ) #+ ".#{$0}"
     # in order to support the testing framework
@@ -459,6 +460,8 @@ class Todo
       ans = STDIN.gets.chomp
       if ans =~ /[Yy]/
         @data.delete item
+        # put deleted row into deleted file, so one can undo
+        File.open(@deleted_path, "a") { | file| file.puts "#{item[0]}#{@todo_delim}#{item[1]}" }
         ctr += 1
       else
         puts "Delete canceled #{item[0]}"
