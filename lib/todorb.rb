@@ -54,8 +54,6 @@ class Todo
   #     $ todorb --show-actions
   #
   # == TODO:
-  # CLEANUP: add method for extract_item from line since scattered everywhere DONE, to use
-  # CLEANUP: add method for checking if string matches an item: is_item?
   #
   def initialize options, argv
  
@@ -513,7 +511,7 @@ class Todo
   # @param [Array] items to deprioritize
   # @return 
   def depri(args)
-    new_change_items args, /\([A-Z]\) /,""
+    change_items args, /\([A-Z]\) /,""
   end
   public
   def _depri(args)
@@ -557,28 +555,6 @@ class Todo
       @data.each { |row| file.puts "#{row[0]}\t#{row[1]}" }
     end
   end
-  ## 
-  # change priority of given item to priority in array
-  # @ deprecated now DELETE TODO:
-  private
-  def _pri item, pri
-    paditem = _paditem(item)
-    rx = Regexp.new "\s+#{item}$"
-    @data.each { |row| 
-      if row[0] =~ rx
-        puts " #{row[0]} : #{row[1]} "
-        if row[1] =~ /\] (\([A-Z]\) )/
-          row[1].sub!(/\([A-Z]\) /,"")
-        end
-        row[1].sub!(/\] /,"] (#{pri}) ")
-        puts " #{GREEN}#{row[0]} : #{row[1]} #{CLEAR}"
-        return true
-      end
-    }
-    puts " #{RED} no such item #{item}  #{CLEAR} "
-    return false
-
-  end
   ##
   # Appends a tag to task
   # FIXME: check with subtasks
@@ -587,34 +563,11 @@ class Todo
   # @return 
   def tag(args)
     tag, items = _separate args
-    #new_change_items items do |item, row|
+    #change_items items do |item, row|
       #ret = row[1].sub!(/ (\([0-9]{4})/, " @#{tag} "+'\1')
       #ret
     #end
-    new_change_items(items, / (\([0-9]{4})/, " @#{tag} "+'\1')
-  end
-  public
-  def oldtag(args)
-    puts "tags args #{args} "
-    items_first = items_first? args
-    items = []
-    tag = nil
-    args.each do |arg| 
-      if arg =~ /^[a-zA-Z]/ 
-        tag = arg
-      elsif arg =~ /^[0-9\.]+$/
-        items << arg
-      end
-    end
-    #items.each { |i| change_row }
-    change_file @todo_file_path do |line|
-      item = line.match(/^ *([0-9\.]+)/)
-      if items.include? item[1]
-        puts "#{line}" if @verbose
-        line.sub!(/$/, " @#{tag}")
-        puts "#{RED}#{line}#{CLEAR} " if @verbose
-      end
-    end
+    change_items(items, / (\([0-9]{4})/, " @#{tag} "+'\1')
   end
   ##
   # deletes one or more items
@@ -698,67 +651,8 @@ class Todo
         warning "No tasks found for #{item}"
       end
     }
-    new_change_items(totalitems, /(\[.\])/, "[#{newstatus}]")
+    change_items(totalitems, /(\[.\])/, "[#{newstatus}]")
     0
-  end
-  def oldstatus(args)
-    stat, items = _separate args #, /^[a-zA-Z]/ 
-    verbose "Items: #{items} : stat #{stat} "
-    status, newstatus = _resolve_status stat
-    if status.nil?
-      die "Status #{stat} is invalid!"
-    end
-    # this worked fine for single items, but not for recursive changes 
-    #ctr = change_items(items, /(\[.\])/, "[#{newstatus}]")
-    total = items.count
-    ctr = 0
-    errors = 0
-    erritems = []
-    change_file @todo_file_path do |line|
-      f = line.split @todo_delim
-      item = f[0].sub!(/\s*/, '')
-      if items.include? item
-        items.delete item
-        ret = line.sub!(/(\[.\])/, "[#{newstatus}]")
-        if ret
-          ctr += 1 
-          verbose "Changed #{item} " 
-        else
-          errors += 1
-          erritems << item
-          warning "Failed to change #{item}: #{line}"
-        end
-      else
-        # check if line matches a subtask, then change
-        if item_matches_subtask? args, item
-          items.delete item
-          ret = line.sub!(/(\[.\])/, "[#{newstatus}]")
-          if ret
-            ctr += 1 
-            verbose "Changed #{item} " 
-          else
-            errors += 1
-            erritems << item
-            warning "Failed to change #{item}: #{line}"
-          end
-        end
-      end
-    end
-    puts "Changed status of #{ctr} tasks"
-    if !items.empty?
-      message "The following tasks were not found #{items}"
-    end
-    if !erritems.empty?
-      message "The following tasks were not updated due to error in sub() #{erritems}"
-    end
-    return ERRCODE if errors > 0 or ctr == 0
-    return 0 if total == ctr
-    return ERRCODE
-    #change_items items do |item, line|
-      #puts line if @verbose
-      #line.sub!(/(\[.\])/, "[#{newstatus}]")
-      #puts "#{RED}#{line}#{CLEAR}" if @verbose
-    #end
   end
   ##
   # separates args into tag or subcommand and items
@@ -814,7 +708,7 @@ class Todo
   def note(args)
     _backup
     text = args.pop
-    new_change_items args do |item, row|
+    change_items args do |item, row|
       m = row[0].match(/^ */)
       indent = m[0]
       ret = row[1].sub!(/ (\([0-9]{4})/," #{indent}* #{text} "+'\1')
@@ -926,12 +820,13 @@ class Todo
   end
   ##
   # For given items, search replace or yield item and row[]
+  # (earlier started as new_change_items)
   #
   # @param [Array, #each] items to change
   # @yield item, row[] - split of line on tab.
   # @return [0, ERRCODE] success or fail
   public
-  def new_change_items items, pattern=nil, replacement=nil
+  def change_items items, pattern=nil, replacement=nil
     ctr = errors = 0
     #tag, items = _separate args
     # or items = args
@@ -1000,7 +895,7 @@ class Todo
   ##
   # yields lines from file that match the given item
   # We do not need to now parse and match the item in each method
-  def change_items args, pattern=nil, replacement=nil
+  def old_change_items args, pattern=nil, replacement=nil
     changed_ctr = 0
     change_file @todo_file_path do |line|
       item = line.match(/^ *([0-9\.]+)/)
