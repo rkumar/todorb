@@ -1,0 +1,5 @@
+#!/usr/bin/env ruby
+require 'rubygems'
+#require 'todorb/todo.rb'
+require 'todorb'
+exit Todo.main(ARGV)
