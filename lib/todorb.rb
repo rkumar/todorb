@@ -22,7 +22,7 @@ PRI_C = GREEN  + BOLD
 PRI_D = CYAN  + BOLD
 VERSION = "2.0"
 DATE = "2010-06-10"
-APPNAME = $0
+APPNAME = File.basename($0)
 AUTHOR = "rkumar"
 TABSTOP = 4 # indentation of subtasks
 
@@ -89,21 +89,21 @@ class Todo
     @actions = {}
     @actions["list"] = "List all tasks.\n\t --hide-numbering --renumber"
     @actions["listsub"] = "List all tasks.\n\t --hide-numbering --renumber"
-    @actions["add"] = "Add a task. \n\t #{$0} add <TEXT>\n\t --component C --project P --priority X add <TEXT>"
-    @actions["pri"] = "Add priority to task. \n\t #{$0} pri <ITEM> [A-Z]"
+    @actions["add"] = "Add a task. \n\t #{$APPNAME} add <TEXT>\n\t --component C --project P --priority X add <TEXT>"
+    @actions["pri"] = "Add priority to task. \n\t #{$APPNAME} pri <ITEM> [A-Z]"
     @actions["priority"] = "Same as pri"
-    @actions["depri"] = "Remove priority of task. \n\t #{$0} depri <ITEM>"
-    @actions["delete"] = "Delete a task. \n\t #{$0} delete <ITEM>"
+    @actions["depri"] = "Remove priority of task. \n\t #{$APPNAME} depri <ITEM>"
+    @actions["delete"] = "Delete a task. \n\t #{$APPNAME} delete <ITEM>"
     @actions["del"] = "Same as delete"
-    @actions["status"] = "Change the status of a task. \n\t #{$0} status <STAT> <ITEM>\n\t<STAT> are open closed started pending hold next"
+    @actions["status"] = "Change the status of a task. \n\t #{$APPNAME} status <STAT> <ITEM>\n\t<STAT> are open closed started pending hold next"
     @actions["redo"] = "Renumbers the todo file starting 1"
-    @actions["note"] = "Add a note to an item. \n\t #{$0} note <ITEM> <TEXT>"
-    @actions["tag"] = "Add a tag to an item/s. \n\t #{$0} tag <ITEMS> <TEXT>"
+    @actions["note"] = "Add a note to an item. \n\t #{$APPNAME} note <ITEM> <TEXT>"
+    @actions["tag"] = "Add a tag to an item/s. \n\t #{$APPNAME} tag <ITEMS> <TEXT>"
     @actions["archive"] = "archive closed tasks to archive.txt"
     @actions["copyunder"] = "Move first item under second (as a subtask). aka cu"
 
     @actions["help"] = "Display help"
-    @actions["addsub"] = "Add a task under another . \n\t #{$0} add <TEXT>\n\t --component C --project P --priority X add <TEXT>"
+    @actions["addsub"] = "Add a task under another . \n\t #{$APPNAME} add <TEXT>\n\t --component C --project P --priority X add <TEXT>"
 
     # adding some sort of aliases so shortcuts can be defined
     @aliases["open"] = ["status","open"]
@@ -837,18 +837,11 @@ class Todo
       end
 
       OptionParser.new do |opts|
-        opts.banner = "Usage: #{$0} [options] action"
+        opts.banner = "Usage: #{$APPNAME} [options] action"
 
         opts.separator ""
-        opts.separator "Specific options:"
+        opts.separator "Options for list and add:"
 
-
-        opts.on("-v", "--[no-]verbose", "Run verbosely") do |v|
-          options[:verbose] = v
-        end
-        opts.on("-f", "--file FILENAME", "CSV filename") do |v|
-          options[:file] = v
-        end
         opts.on("-P", "--project PROJECTNAME", "name of project for add or list") { |v|
           options[:project] = v
           options[:filter] = true
@@ -861,6 +854,8 @@ class Todo
           options[:component] = v
           options[:filter] = true
         }
+        opts.separator ""
+        opts.separator "Specific options:"
         opts.on("--force", "force delete or add without prompting") do |v|
           options[:force] = v
         end
@@ -893,7 +888,13 @@ class Todo
         opts.separator ""
         opts.separator "Common options:"
 
-        opts.on_tail("-d DIR", "--dir DIR", "Use TODO file in this directory") do |v|
+        opts.on("-v", "--[no-]verbose", "Run verbosely") do |v|
+          options[:verbose] = v
+        end
+        opts.on("-f", "--file FILENAME", "CSV filename") do |v|
+          options[:file] = v
+        end
+        opts.on("-d DIR", "--dir DIR", "Use TODO file in this directory") do |v|
           require 'FileUtils'
           dir = File.expand_path v
           if File.directory? dir
@@ -906,22 +907,31 @@ class Todo
         end
         # No argument, shows at tail.  This will print an options summary.
         # Try it and see!
-        opts.on_tail("-h", "--help", "Show this message") do
+        opts.on("-h", "--help", "Show this message") do
           puts opts
           exit 0
         end
 
-        opts.on_tail("--show-actions", "show actions ") do |v|
+        opts.on("--show-actions", "show actions ") do |v|
           todo = Todo.new(options, ARGV)
           todo.help nil
           exit 0
         end
 
-        opts.on_tail("--version", "Show version") do
+        opts.on("--version", "Show version") do
           puts "#{APPNAME} version #{VERSION}, #{DATE}"
           puts "by #{AUTHOR}. This software is under the GPL License."
           exit 0
         end
+        opts.separator ""
+        opts.separator "Common Usage:"
+        opts.separator <<TEXT
+        #{APPNAME} list
+        #{APPNAME} add "TEXT ...."
+        #{APPNAME} pri 1 A
+        #{APPNAME} close 1 
+TEXT
+        
       end.parse!(args)
 
       options[:file] ||= "TODO2.txt"
