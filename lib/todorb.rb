@@ -11,8 +11,10 @@ require 'rubygems'
 #require 'csv'
 require 'common/colorconstants'
 require 'common/sed'
+require 'common/cmdapp'
 include ColorConstants
 include Sed
+include Cmdapp
 
 PRI_A = YELLOW + BOLD
 PRI_B = WHITE  + BOLD
@@ -23,7 +25,6 @@ DATE = "2010-06-10"
 APPNAME = $0
 AUTHOR = "rkumar"
 TABSTOP = 4 # indentation of subtasks
-ERRCODE = 1
 
 class Todo
   # This class is responsible for all todo task related functionality.
@@ -67,10 +68,10 @@ class Todo
     init_vars
   end
   def init_vars
-    @todo_default_action = "list"
-    @todo_file_path = @options[:file] || "TODO2.txt"
-    #@todo_serial_path = File.expand_path("~/serial_numbers")
-    @todo_serial_path = "serial_numbers"
+    @app_default_action = "list"
+    @app_file_path = @options[:file] || "TODO2.txt"
+    #@app_serial_path = File.expand_path("~/serial_numbers")
+    @app_serial_path = "serial_numbers"
     @archive_path = "todo_archive.txt" 
     @todo_delim = "\t"
     @appname = File.basename( Dir.getwd ) #+ ".#{$0}"
@@ -112,60 +113,6 @@ class Todo
     # TODO: config
     # we need to read up from config file and update
   end
-  ##
-  # check whether this action is mapped to some alias and *changes*
-  # @action and @argv if true.
-  # @param [String] action asked by user
-  # @param [Array] rest of args on command line
-  # @return [Boolean] whether it is mapped or not.
-  #
-  def check_aliases action, args
-    ret = @aliases[action]
-    if ret
-      a = ret.shift
-      b = [*ret, *args]
-      @action = a
-      @argv = b
-      #puts " #{@action} ; argv: #{@argv} "
-      return true
-    end
-    return false
-  end
-  ## 
-  # runs method after checking if valid or alias.
-  # If not found prints help.
-  # @return [0, ERRCODE] success 0.
-  def run
-    @action = @argv[0] || @todo_default_action
-    @action = @action.downcase
-    @action.sub!('priority', 'pri')
-    @action.sub!(/^del$/, 'delete')
-
-
-    ret = 0
-    @argv.shift
-    if @actions.include? @action
-      ret = send(@action, @argv)
-    else
-      # check aliases
-      if check_aliases @action, @argv
-        ret = send(@action, @argv)
-      else
-        help @argv
-        ret = ERRCODE
-      end
-    end
-    ret ||= 0
-    return ret
-  end
-  def help args
-    puts "Actions are "
-    @actions.each_pair { |name, val| puts "#{name}\t#{val}" }
-    puts " "
-    puts "Aliases are "
-    @aliases.each_pair { |name, val| puts "#{name}:\t#{val.join(' ')}" }
-    0
-  end
   def add args
     if args.empty?
       print "Enter todo: "
@@ -190,47 +137,11 @@ class Todo
     project  = @options[:project]  ? " +#{@options[:project]}"   : ""
     component  = @options[:component]  ? " @#{@options[:component]}"   : ""
     newtext="#{paditem}#{@todo_delim}[ ]#{priority}#{project}#{component} #{text} (#{@today})"
-    File.open(@todo_file_path, "a") { | file| file.puts newtext }
+    File.open(@app_file_path, "a") { | file| file.puts newtext }
     puts "Adding:"
     puts newtext
 
     0
-  end
-  ##
-  # reads serial_number file, returns serialno for this app
-  # and increments the serial number and writes back.
-  def _get_serial_number
-    require 'fileutils'
-    appname = @appname
-    filename = @todo_serial_path
-    h = {}
-    # check if serial file existing in curr dir. Else create
-    if File.exists?(filename)
-      File.open(filename).each { |line|
-        #sn = $1 if line.match regex
-        x = line.split ":"
-        h[x[0]] = x[1].chomp
-      }
-    end
-    sn = h[appname] || 1
-    # update the sn in file
-    nsn = sn.to_i + 1
-    # this will create if not exists in addition to storing if it does
-    h[appname] = nsn
-    # write back to file
-    File.open(filename, "w") do |f|
-      h.each_pair {|k,v| f.print "#{k}:#{v}\n"}
-    end
-    return sn
-  end
-  ##
-  # After doing a redo of the numbering, we need to reset the numbers for that app
-  def _set_serial_number number
-    appname = @appname
-    pattern = Regexp.new "^#{appname}:.*$"
-    filename = @todo_serial_path
-    _backup filename
-    change_row filename, pattern, "#{appname}:#{number}"
   end
   ##
   # add a subtask
@@ -249,17 +160,17 @@ class Todo
     lastlinect = nil
     lastlinetext = nil
     # look for last item below given task (if there is)
-    egrep( [@todo_file_path], Regexp.new("#{under}\.[0-9]+	")) do |fn,ln,line|
+    Sed::egrep( [@app_file_path], Regexp.new("#{under}\.[0-9]+	")) do |fn,ln,line|
       lastlinect = ln
       lastlinetext = line
-      puts line
+      puts line if @verbose 
     end
     if lastlinect
       verbose "Last line found #{lastlinetext} " 
       m = lastlinetext.match(/\.([0-9]+)	/)
       lastindex = m[1].to_i
       # check if it has subitems, find last one only for linecount
-      egrep( [@todo_file_path], Regexp.new("#{under}\.#{lastindex}\.[0-9]+	")) do |fn,ln,line|
+      Sed::egrep( [@app_file_path], Regexp.new("#{under}\.#{lastindex}\.[0-9]+	")) do |fn,ln,line|
         lastlinect = ln
       end
       lastindex += 1
@@ -269,7 +180,7 @@ class Todo
       item = "#{under}.1"
       # get line of parent
       found = nil
-      egrep( [@todo_file_path], Regexp.new("#{under}	")) do |fn,ln,line|
+      Sed::egrep( [@app_file_path], Regexp.new("#{under}	")) do |fn,ln,line|
         lastlinect = ln
         found = true
       end
@@ -295,35 +206,14 @@ class Todo
       newtext="#{indent}#{paditem}#{@todo_delim}[ ]#{priority}#{project}#{component} #{text} (#{@today})"
     end
     raise "Cannot insert blank text. Programmer error!" unless newtext
-    _backup
+    #_backup
     puts "Adding:"
     puts newtext
-    insert_row(@todo_file_path, lastlinect, newtext)
+    Sed::insert_row(@app_file_path, lastlinect, newtext)
+    return 0
   end
-  def _backup filename=@todo_file_path
-    require 'fileutils'
-    FileUtils.cp filename, "#{filename}.org"
-  end
-  def check_file filename=@todo_file_path
+  def check_file filename=@app_file_path
     File.exists?(filename) or die "#{filename} does not exist in this dir. Use 'add' to create an item first."
-  end
-  def die text
-    $stderr.puts text
-    exit ERRCODE
-  end
-  # prints messages to stderr
-  # All messages should go to stderr.
-  # Keep stdout only for output which can be used by other programs
-  def message text
-    $stderr.puts text
-  end
-  # print to stderr only if verbose set
-  def verbose text
-    message(text) if @options[:verbose]
-  end
-  # print to stderr only if verbose set
-  def warning text
-    print_red("WARNING: #{text}") 
   end
   ##
   # for historical reasons, I pad item to 3 spaces in text file.
@@ -382,7 +272,7 @@ class Todo
     renumber if @options[:renumber]
     colorize # << currently this is where I print !! Since i colorize the whole line
     puts " " 
-    puts " #{@data.length} of #{@total} rows displayed from #{@todo_file_path} "
+    puts " #{@data.length} of #{@total} rows displayed from #{@app_file_path} "
     return 0
   end
   def print_todo
@@ -513,48 +403,6 @@ class Todo
   def depri(args)
     change_items args, /\([A-Z]\) /,""
   end
-  public
-  def _depri(args)
-    load_array
-    puts "depri got #{args} " if @verbose 
-    args.each { |item|  
-    
-    }
-    each do |row|
-      item = row[0].sub(/^[ -]*/,'')
-      if args.include? item
-        if row[1] =~ /\] (\([A-Z]\) )/
-          puts row[1]
-          row[1].sub!(/\([A-Z]\) /,"")
-          puts "#{RED}#{row[1]}#{CLEAR}"
-        end
-      end
-    end
-    save_array 
-  end
-  ##
-  # load data into array as item and task
-  # @see save_array to write
-  def load_array
-    #return if $valid_array
-    $valid_array = false
-    @data = []
-    File.open(@todo_file_path).each do |line|
-      row = line.chomp.split "\t"
-      @data << row
-    end
-    $valid_array = true
-  end
-  ## 
-  # saves the task array to disk
-  # Please use load_array to load, and not populate
-  def save_array
-    raise "Cannot save array! Please use load_array to load" if $valid_array == false
-
-    File.open(@todo_file_path, "w") do |file| 
-      @data.each { |row| file.puts "#{row[0]}\t#{row[1]}" }
-    end
-  end
   ##
   # Appends a tag to task
   # FIXME: check with subtasks
@@ -577,16 +425,65 @@ class Todo
   # FIXME: if invalid item passed I have no way of giving error 
   public
   def delete(args)
+    ctr = errors = 0
+    items = args
+    die "#{@action}: items expected" unless items
+    total = items.count
+    totalitems = []
+    load_array
+    items.each do |item| 
+      if @options[:recursive]
+        a = get_item_subs item
+        if a
+          a.each { |e| 
+            totalitems << e; #e[0].strip
+          }
+        else
+          errors += 1
+          warning "#{item} not found."
+        end
+      else
+        row = get_item(item)
+        if row
+          totalitems << row
+        else
+          errors += 1
+          warning "#{item} not found."
+        end
+      end
+    end
+    totalitems.each { |item| 
+      puts "#{item[0]} #{item[1]}"
+      print "Do you wish to delete (Y/N): "
+      STDOUT.flush
+      ans = STDIN.gets.chomp
+      if ans =~ /[Yy]/
+        @data.delete item
+        ctr += 1
+      else
+        puts "Delete canceled #{item[0]}"
+      end
+    }
+    message "#{errors} error/s" if errors > 0
+    if ctr > 0
+      puts "Deleted #{ctr} task/s"
+      save_array 
+      return 0 
+    end
+    return ERRCODE
+  end
+  public
+  def olddelete(args)
     puts "delete with #{args} " if @verbose 
     _backup
-    lines = _read @todo_file_path
+    lines = Sed::_read @app_file_path
     args.each { |item| 
       ans = "N"
       rx = regexp_item item # Regexp.new(" +#{item}#{@todo_delim}")
       lines.delete_if { |line|
         flag = line =~ rx
-        puts " #{item} : #{line} : #{flag} " if flag
         if flag
+          verbose " #{item} : #{line} : #{flag} "
           if @options[:force]
             true
           else
@@ -599,13 +496,13 @@ class Todo
         end
       }
       if ans =~ /[Yy]/ && @options[:recursive]
-        puts "recursive"
+        #puts "recursive"
         #rx = Regexp.new("^\s*-\s*#{item}[\d\.]+#{@todo_delim}")
         rx = Regexp.new("\s+#{item}\.") # #{@todo_delim}")
         lines.delete_if { |line|
           flag = line =~ rx
-          puts " rec #{item} : #{line} : #{flag} " if flag
           if flag
+            verbose " rec #{item} : #{line} : #{flag} "
             if @options[:force]
               true
             else
@@ -619,7 +516,7 @@ class Todo
         }
       end
     } # args.each
-    _write @todo_file_path, lines
+    Sed::_write @app_file_path, lines
     0
   end
   ##
@@ -725,7 +622,7 @@ class Todo
     filename = @archive_path
     file = File.open(filename, "a") 
     ctr = 0
-    delete_row @todo_file_path do |line|
+    Sed::delete_row @app_file_path do |line|
       if line =~ /\[x\]/
         file.puts line
         ctr += 1
@@ -750,7 +647,7 @@ class Todo
     # extract item from
     lastlinetext = nil
     rx = regexp_item from
-    egrep( [@todo_file_path], rx) do |fn,ln,line|
+    Sed::egrep( [@app_file_path], rx) do |fn,ln,line|
       lastlinect = ln
       lastlinetext = line
       puts line
@@ -775,11 +672,11 @@ class Todo
   public
   def get_item(item)
     raise "Please load array first!" if @data.empty?
-    verbose "get_item got #{item}."
+    puts "get_item got #{item}." if @verbose
     #rx = regexp_item(item)
     rx = Regexp.new("^ +#{item}$")
     @data.each { |row|
-      verbose "    get_item read #{row[0]}."
+      puts "    get_item read #{row[0]}." if @verbose 
       return row if row[0] =~ rx
     }
     # not found
@@ -870,10 +767,10 @@ class Todo
   ## does a straight delete of an item, no questions asked
   # internal use only.
   def delete_item item
-    filename=@todo_file_path
-    d = _read filename
+    filename=@app_file_path
+    d = Sed::_read filename
     d.delete_if { |row| line_contains_item?(row, item) }
-    _write filename, d
+    Sed::_write filename, d
   end
   def line_contains_item? line, item
     rx = regexp_item item
@@ -893,42 +790,21 @@ class Todo
       return item[1]
   end
   ##
-  # yields lines from file that match the given item
-  # We do not need to now parse and match the item in each method
-  def old_change_items args, pattern=nil, replacement=nil
-    changed_ctr = 0
-    change_file @todo_file_path do |line|
-      item = line.match(/^ *([0-9\.]+)/)
-      puts "got item: #{item[1]} " if @verbose 
-      if args.include? item[1]
-        if pattern
-          puts line if @verbose
-          ret = line.sub!(pattern, replacement)
-          changed_ctr += 1 if ret
-          print_red line if @verbose
-        else
-          yield item[1], line
-        end
-      end
-    end
-    return changed_ctr
-  end
-  ##
   # Redoes the numbering in the file.
   # Useful if the numbers have gone high and you want to start over.
   def redo args
     #require 'fileutils'
-    #FileUtils.cp @todo_file_path, "#{@todo_file_path}.org"
+    #FileUtils.cp @app_file_path, "#{@app_file_path}.org"
     _backup
-    puts "Saved #{@todo_file_path} as #{@todo_file_path}.org"
+    puts "Saved #{@app_file_path} as #{@app_file_path}.org"
     #ctr = 1
-    #change_file @todo_file_path do |line|
+    #change_file @app_file_path do |line|
       #paditem = _paditem ctr
       #line.sub!(/^ *[0-9]+/, paditem)
       #ctr += 1
     #end
     ctr = 0
-    change_file @todo_file_path do |line|
+    Sed::change_file @app_file_path do |line|
       if line =~ /^ *[0-9]+\t/
         ctr += 1
         paditem = _paditem ctr
@@ -947,9 +823,6 @@ class Todo
   def items_first?(args)
     return true if args[0] =~ /^[0-9]+$/
     return false
-  end
-  def print_red line
-    puts "#{RED}#{line}#{CLEAR}"
   end
   private
   def _resolve_status stat
