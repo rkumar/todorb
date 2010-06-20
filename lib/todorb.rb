@@ -472,53 +472,6 @@ class Todo
     end
     return ERRCODE
   end
-  public
-  def olddelete(args)
-    puts "delete with #{args} " if @verbose 
-    _backup
-    lines = Sed::_read @app_file_path
-    args.each { |item| 
-      ans = "N"
-      rx = regexp_item item # Regexp.new(" +#{item}#{@todo_delim}")
-      lines.delete_if { |line|
-        flag = line =~ rx
-        if flag
-          verbose " #{item} : #{line} : #{flag} "
-          if @options[:force]
-            true
-          else
-            puts line
-            print "Do you wish to delete (Y/N): "
-            STDOUT.flush
-            ans = STDIN.gets.chomp
-            ans =~ /[Yy]/
-          end
-        end
-      }
-      if ans =~ /[Yy]/ && @options[:recursive]
-        #puts "recursive"
-        #rx = Regexp.new("^\s*-\s*#{item}[\d\.]+#{@todo_delim}")
-        rx = Regexp.new("\s+#{item}\.") # #{@todo_delim}")
-        lines.delete_if { |line|
-          flag = line =~ rx
-          if flag
-            verbose " rec #{item} : #{line} : #{flag} "
-            if @options[:force]
-              true
-            else
-              puts line
-              print "Do you wish to delete (Y/N): "
-              STDOUT.flush
-              ans = STDIN.gets.chomp
-              ans =~ /[Yy]/
-            end
-          end
-        }
-      end
-    } # args.each
-    Sed::_write @app_file_path, lines
-    0
-  end
   ##
   # Change status of given items
   #
@@ -784,6 +737,7 @@ class Todo
   def regexp_item item
     Regexp.new("^ +#{item}#{@todo_delim}")
   end
+  # @unused - wrote so i could use it refactoring -  i should be using this TODO:
   def extract_item line
       item = line.match(/^ *([0-9\.]+)/)
       return nil if item.nil?
@@ -818,12 +772,6 @@ class Todo
     puts "Redone numbering"
   end
   ##
-  # does this command start with items or something else
-  private
-  def items_first?(args)
-    return true if args[0] =~ /^[0-9]+$/
-    return false
-  end
   private
   def _resolve_status stat
     status = nil
