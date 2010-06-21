@@ -10,7 +10,7 @@ begin
     gem.email = "sentinel1879@gmail.com"
     gem.homepage = "http://github.com/rkumar/todorb"
     gem.authors = ["Rahul Kumar"]
-    #gem.rubyforge_project = "todorb"
+    gem.rubyforge_project = "todorb"
     #gem.add_development_dependency "thoughtbot-shoulda", ">= 0"
     # gem is a Gem::Specification... see http://www.rubygems.org/read/chapter/20 for additional settings
   end
