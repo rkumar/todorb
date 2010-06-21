@@ -5,11 +5,11 @@
 
 Gem::Specification.new do |s|
   s.name = %q{todorb}
-  s.version = "0.2.1"
+  s.version = "1.0.0"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["Rahul Kumar"]
-  s.date = %q{2010-06-20}
+  s.date = %q{2010-06-21}
   s.default_executable = %q{todorb}
   s.description = %q{command-line program that manages a todo list text file }
   s.email = %q{sentinel1879@gmail.com}
@@ -20,15 +20,32 @@ Gem::Specification.new do |s|
   ]
   s.files = [
     "CHANGELOG.rdoc",
+     "LICENSE",
+     "Makefile",
      "README.markdown",
+     "Rakefile",
      "VERSION",
+     "bin/todorb",
+     "lib/common/cmdapp.rb",
      "lib/common/colorconstants.rb",
      "lib/common/sed.rb",
-     "lib/todorb.rb"
+     "lib/todorb.rb",
+     "tests/Makefile",
+     "tests/README",
+     "tests/aggregate-results.sh",
+     "tests/clean.sh",
+     "tests/dataset1.txt",
+     "tests/recreate.sh",
+     "tests/rtest2.sh",
+     "tests/t0001-add.sh",
+     "tests/t0002-listing.sh",
+     "tests/test-lib.sh",
+     "todorb.gemspec"
   ]
   s.homepage = %q{http://github.com/rkumar/todorb}
   s.rdoc_options = ["--charset=UTF-8"]
   s.require_paths = ["lib"]
+  s.rubyforge_project = %q{todorb}
   s.rubygems_version = %q{1.3.6}
   s.summary = %q{command-line todo list manager}
 
