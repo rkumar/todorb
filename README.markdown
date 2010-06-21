@@ -15,18 +15,19 @@ After this, I will port over my bug tracker, [bugzy.txt](http://github.com/rkuma
 ## Features
 
 1. multiple todo lists (per directory)
-2. subtasks
+2. subtasks (recursive delete or status update)
 3. priorities - (A) (B)
 4. status - [ ], [x], [@] etc
 5. tag    - @WORK
 6. project - +myproj
 7. component - @comp1
 8. notes attached to task
-9. delete task
+9. delete tasks
 10. archive completed tasks
-11. colored and plain output
-12. hide completed tasks
-13. Search, filter, sort tasks
+11. colored or plain output
+12. show or hide completed tasks (default: hide)
+13. Search, filter, sort tasks by priority (default) or task id.
+14. Renumber the file
 
 ## Sample Output
 
@@ -53,6 +54,11 @@ After this, I will port over my bug tracker, [bugzy.txt](http://github.com/rkuma
       16 [ ] (A) add aliases to subcommand (2010-06-21) 
      
      17 of 17 rows displayed from TODO2.txt 
+
+## File format
+
+1. The file format is almost identical to the output except that there is a TAB after the task number.
+2. Notes are saved on same line as task, but displayed on another line with asterisk prefix.
 
 ## Copyright
 
