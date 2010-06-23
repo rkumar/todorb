@@ -5,8 +5,7 @@
   *               : Moving some methods from todorb.rb here
   * Author        : rkumar
   * Date          : 2010-06-20 11:18 
-  * License       :
-    Same as Ruby's License (http://www.ruby-lang.org/LICENSE.txt)
+  * License:       Ruby License
 
 =end
 require 'common/sed'
@@ -22,7 +21,7 @@ module Cmdapp
   #  @app_serial_path - serial_number file
   ##
   # check whether this action is mapped to some alias and *changes*
-  # @action and @argv if true.
+  # variables@action and @argv if true.
   # @param [String] action asked by user
   # @param [Array] rest of args on command line
   # @return [Boolean] whether it is mapped or not.
@@ -46,13 +45,11 @@ module Cmdapp
   def run
     @action = @argv[0] || @app_default_action
     @action = @action.downcase
-    @action.sub!('priority', 'pri')
-    @action.sub!(/^del$/, 'delete')
 
 
     ret = 0
     @argv.shift
-    if @actions.include? @action
+    if respond_to? @action
       ret = send(@action, @argv)
     else
       # check aliases
@@ -67,13 +64,25 @@ module Cmdapp
     ret = 0 if ret != ERRCODE
     return ret
   end
+  # not required if using Subcommand
   def help args
-    puts "Actions are "
-    @actions.each_pair { |name, val| puts "#{name}\t#{val}" }
+    if @actions
+      puts "Actions are "
+      @actions.each_pair { |name, val| puts "#{name}\t#{val}" }
+    end
     puts " "
     puts "Aliases are "
     @aliases.each_pair { |name, val| puts "#{name}:\t#{val.join(' ')}" }
     0
+  end
+  ## 
+  def alias_command name, *args
+    @aliases ||= {}
+    @aliases[name.to_s] = args
+  end
+  def add_action name, descr
+    @actions ||= {}
+    @actions[name.to_s] = desc
   end
 
   ##
@@ -150,6 +159,7 @@ module Cmdapp
     $valid_array = false
     @data = []
     File.open(@app_file_path).each do |line|
+      # FIXME: use @app_delim
       row = line.chomp.split "\t"
       @data << row
     end
@@ -162,8 +172,26 @@ module Cmdapp
     raise "Cannot save array! Please use load_array to load" if $valid_array == false
 
     File.open(@app_file_path, "w") do |file| 
+      # FIXME: use join with @app_delim
       @data.each { |row| file.puts "#{row[0]}\t#{row[1]}" }
     end
+  end
+  ##
+  # retrieve version info updated by jeweler.
+  # Typically used by --version option of any command.
+  # @return [String, nil] version as string, or nil if file not found
+  def version_info
+    # thanks to Roger Pack on ruby-forum for how to get to the version
+    # file
+    filename = File.open(File.dirname(__FILE__) + "/../../VERSION")
+    v = nil
+    if File.exists?(filename)
+      v = File.open(filename).read.chomp if File.exists?(filename)
+    #else
+      #$stderr.puts "could not locate file #{filename}. " 
+      #puts `pwd`
+    end
+    v
   end
 
 
