@@ -4,7 +4,8 @@
   * Description:   a command line todo list manager
   * Author:        rkumar
   * Date:          2010-06-10 20:10 
-  * License:       GPL
+  * License:       Ruby License
+  * Now requires subcommand gem as of 2010-06-22 16:16 
 
 =end
 require 'rubygems'
@@ -12,15 +13,17 @@ require 'rubygems'
 require 'common/colorconstants'
 require 'common/sed'
 require 'common/cmdapp'
+require 'subcommand'
 include ColorConstants
 include Sed
 include Cmdapp
+include Subcommands
 
 PRI_A = YELLOW + BOLD
 PRI_B = WHITE  + BOLD
 PRI_C = GREEN  + BOLD
 PRI_D = CYAN  + BOLD
-VERSION = "2.0"
+VERSION = "1.0.0"
 DATE = "2010-06-10"
 APPNAME = File.basename($0)
 AUTHOR = "rkumar"
@@ -59,7 +62,6 @@ class Todo
   def initialize options, argv
  
     @options = options
-    @aliases = {}
     @argv = argv
     @file = options[:file]
     ## data is a 2 dim array: rows and fields. It contains each row of the file
@@ -86,29 +88,28 @@ class Todo
     $valid_array = false
     # menu MENU
     #@actions = %w[ list add pri priority depri tag del delete status redo note archive help]
-    @actions = {}
-    @actions["list"] = "List all tasks.\n\t --hide-numbering --renumber"
-    @actions["listsub"] = "List all tasks.\n\t --hide-numbering --renumber"
-    @actions["add"] = "Add a task. \n\t #{$APPNAME} add <TEXT>\n\t --component C --project P --priority X add <TEXT>"
-    @actions["pri"] = "Add priority to task. \n\t #{$APPNAME} pri <ITEM> [A-Z]"
-    @actions["priority"] = "Same as pri"
-    @actions["depri"] = "Remove priority of task. \n\t #{$APPNAME} depri <ITEM>"
-    @actions["delete"] = "Delete a task. \n\t #{$APPNAME} delete <ITEM>"
-    @actions["del"] = "Same as delete"
-    @actions["status"] = "Change the status of a task. \n\t #{$APPNAME} status <STAT> <ITEM>\n\t<STAT> are open closed started pending hold next"
-    @actions["redo"] = "Renumbers the todo file starting 1"
-    @actions["note"] = "Add a note to an item. \n\t #{$APPNAME} note <ITEM> <TEXT>"
-    @actions["tag"] = "Add a tag to an item/s. \n\t #{$APPNAME} tag <ITEMS> <TEXT>"
-    @actions["archive"] = "archive closed tasks to archive.txt"
-    @actions["copyunder"] = "Move first item under second (as a subtask). aka cu"
-
-    @actions["help"] = "Display help"
-    @actions["addsub"] = "Add a task under another . \n\t #{$APPNAME} add <TEXT>\n\t --component C --project P --priority X add <TEXT>"
+    #@actions = {}
+    #@actions["list"] = "List all tasks.\n\t --hide-numbering --renumber"
+    #@actions["listsub"] = "List all tasks.\n\t --hide-numbering --renumber"
+    #@actions["add"] = "Add a task. \n\t #{$APPNAME} add <TEXT>\n\t --component C --project P --priority X add <TEXT>"
+    #@actions["pri"] = "Add priority to task. \n\t #{$APPNAME} pri <TASK> [A-Z]"
+    #@actions["priority"] = "Same as pri"
+    #@actions["depri"] = "Remove priority of task. \n\t #{$APPNAME} depri <TASK>"
+    #@actions["delete"] = "Delete a task. \n\t #{$APPNAME} delete <TASK>"
+    #@actions["del"] = "Same as delete"
+    #@actions["status"] = "Change the status of a task. \n\t #{$APPNAME} status <STAT> <TASK>\n\t<STAT> are open closed started pending hold next"
+    #@actions["redo"] = "Renumbers the todo file starting 1"
+    #@actions["note"] = "Add a note to an item. \n\t #{$APPNAME} note <TASK> <TEXT>"
+    #@actions["tag"] = "Add a tag to an item/s. \n\t #{$APPNAME} tag <TASK> <TEXT>"
+    #@actions["archive"] = "archive closed tasks to archive.txt"
+    #@actions["copyunder"] = "Move first item under second (as a subtask). aka cu"
+#
+    #@actions["help"] = "Display help"
+    #@actions["addsub"] = "Add a task under another . \n\t #{$APPNAME} add <TEXT>\n\t --component C --project P --priority X add <TEXT>"
 
     # adding some sort of aliases so shortcuts can be defined
-    @aliases["open"] = ["status","open"]
-    @aliases["close"] = ["status","closed"]
-    @aliases["cu"] = ["copyunder"]
+    #@aliases["open"] = ["status","open"]
+    #@aliases["close"] = ["status","closed"]
 
     @copying = false # used by copyunder when it calls addsub
     # TODO: config
@@ -147,8 +148,9 @@ class Todo
   ##
   # add a subtask
   # @param [Array] 1. item under which to place, 2. text
-  # @return 
-  # @example:
+  # @return [0,1] success or fail
+  #
+  # @example
   #    addsub 1 "A task"   
   #       => will get added as 1.1 or 1.2 etc
   #    addsub 1.3 "a task"
@@ -325,7 +327,8 @@ class Todo
             #string = "#{BLUE}#{string}#{CLEAR}"
           end 
         else
-          string = "#{NORMAL}#{string}#{CLEAR}"
+          #string = "#{NORMAL}#{string}#{CLEAR}"
+          # no need to put clear, let it be au natural
         end
       end # colorme
       ## since we've added notes, we convert C-a to newline with spaces
@@ -347,8 +350,8 @@ class Todo
   # Adds or changes priority for a task
   #
   # @param [Array] priority, single char A-Z, item or items
-  # @return 
-  # @example:
+  # @return [0,1] success or fail
+  # @example
   # pri A 5 6 7
   # pri 5 6 7 A
   # -- NO LONGER this complicated system  pri A 5 6 7 B 1 2 3
@@ -400,7 +403,7 @@ class Todo
   # Remove the priority of a task
   #
   # @param [Array] items to deprioritize
-  # @return 
+  # @return [0,1] success or fail
   def depri(args)
     change_items args, /\([A-Z]\) /,""
   end
@@ -409,7 +412,7 @@ class Todo
   # FIXME: check with subtasks
   #
   # @param [Array] items and tag, or tag and items
-  # @return 
+  # @return [0,1] success or fail
   def tag(args)
     tag, items = _separate args
     #change_items items do |item, row|
@@ -422,8 +425,7 @@ class Todo
   # deletes one or more items
   #
   # @param [Array, #include?] items to delete
-  # @return 
-  # FIXME: if invalid item passed I have no way of giving error 
+  # @return [0,1] success or fail
   public
   def delete(args)
     ctr = errors = 0
@@ -454,10 +456,24 @@ class Todo
       end
     end
     totalitems.each { |item| 
+      # FIXME: TODO: if --force used then don'y prompt
       puts "#{item[0]} #{item[1]}"
-      print "Do you wish to delete (Y/N): "
-      STDOUT.flush
-      ans = STDIN.gets.chomp
+      ans = nil
+      if @options[:force]
+        ans = "Y"
+      else
+        $stderr.print "Do you wish to delete (Y/N/A/q): "
+        STDOUT.flush
+        ans = STDIN.gets.chomp
+        # A means user specified ALL, don't keep asking
+        if ans =~ /[Aa]/
+          ans = "Y"
+          @options[:force] = true
+        elsif ans =~ /[qQ]/
+          $stderr.puts "Operation canceled. No tasks deleted."
+          exit 1
+        end
+      end
       if ans =~ /[Yy]/
         @data.delete item
         # put deleted row into deleted file, so one can undo
@@ -479,7 +495,7 @@ class Todo
   # Change status of given items
   #
   # @param [Array, #include?] items to change status of
-  # @return [true, false] success or fail
+  # @return [0,1] success or fail
   public
   def status(args)
     stat, items = _separate args #, /^[a-zA-Z]/ 
@@ -530,7 +546,7 @@ class Todo
   end
   ##
   # Renumber while displaying
-  # @return [true, false] success or fail
+  # @return [0,1] success or fail
   private
   def renumber
     ## this did not account for subtasks
@@ -556,7 +572,7 @@ class Todo
   # For given items, add a note
   #
   # @param [Array, #include?] items to add note to, note
-  # @return [true, false] success or fail
+  # @return [0, 1] success or fail
   public
   def note(args)
     _backup
@@ -567,12 +583,13 @@ class Todo
       ret = row[1].sub!(/ (\([0-9]{4})/," #{indent}* #{text} "+'\1')
       ret
     end
+    0
   end
   ##
-  # Archive all items
+  # Archive all closed items
   #
   # @param none (ignored)
-  # @return [true, false] success or fail
+  # @return [0, 1] success or fail
   public
   def archive(args=nil)
     filename = @archive_path
@@ -588,11 +605,12 @@ class Todo
     end
     file.close
     puts "Archived #{ctr} tasks."
+    0
   end
   # Copy given item under second item
   #
   # @param [Array] 2 items, move first under second
-  # @return [Boolean] success or fail
+  # @return [0,1] success or fail
   public
   def copyunder(args)
     if args.nil? or args.count != 2
@@ -616,8 +634,8 @@ class Todo
     # remove item number and status ? 
     # give to addsub to add.
     # delete from
-    delete_item from
-    # take care of data in addsub (if existing, and also /
+    #  The earlier todoapp.sh  was not deleting, so we don't. We just copy
+    delete_item(from) if @options[:delete_old]
   end
   ##
   # Get row for given item or nil.
@@ -740,7 +758,7 @@ class Todo
   def regexp_item item
     Regexp.new("^ +#{item}#{@todo_delim}")
   end
-  # @unused - wrote so i could use it refactoring -  i should be using this TODO:
+  # unused - wrote so i could use it refactoring -  i should be using this TODO:
   def extract_item line
       item = line.match(/^ *([0-9\.]+)/)
       return nil if item.nil?
@@ -749,6 +767,7 @@ class Todo
   ##
   # Redoes the numbering in the file.
   # Useful if the numbers have gone high and you want to start over.
+  # @return [0,1] success or fail
   def redo args
     #require 'fileutils'
     #FileUtils.cp @app_file_path, "#{@app_file_path}.org"
@@ -773,6 +792,7 @@ class Todo
     end
     _set_serial_number ctr
     puts "Redone numbering"
+    0
   end
   ##
   private
@@ -836,103 +856,186 @@ class Todo
         options[:colorize] = (plain == "0") ? false:true
       end
 
-      OptionParser.new do |opts|
-        opts.banner = "Usage: #{$APPNAME} [options] action"
+  Subcommands::global_options do |opts|
+    opts.banner = "Usage: #{$APPNAME} [options] [subcommand [options]]"
+    opts.description = "Todo list manager"
+    #opts.separator ""
+    #opts.separator "Global options are:"
+    opts.on("-v", "--[no-]verbose", "Run verbosely") do |v|
+      options[:verbose] = v
+    end
+    opts.on("-f", "--file FILENAME", "CSV filename") do |v|
+      options[:file] = v
+    end
+    opts.on("-d DIR", "--dir DIR", "Use TODO file in this directory") do |v|
+      require 'FileUtils'
+      dir = File.expand_path v
+      if File.directory? dir
+        options[:dir] = dir
+        # changing dir is important so that serial_number file is the current one.
+        FileUtils.cd dir
+      else
+        die "#{RED}#{v}: no such directory #{CLEAR}"
+      end
+    end
+    opts.on("--show-actions", "show actions ") do |v|
+      todo = Todo.new(options, ARGV)
+      todo.help nil
+      exit 0
+    end
 
-        opts.separator ""
-        opts.separator "Options for list and add:"
-
-        opts.on("-P", "--project PROJECTNAME", "name of project for add or list") { |v|
-          options[:project] = v
-          options[:filter] = true
-        }
-        opts.on("-p", "--priority A-Z",  "priority code for add or list") { |v|
-          options[:priority] = v
-          options[:filter] = true
-        }
-        opts.on("-C", "--component COMPONENT",  "component name for add or list") { |v|
-          options[:component] = v
-          options[:filter] = true
-        }
-        opts.separator ""
-        opts.separator "Specific options:"
-        opts.on("--force", "force delete or add without prompting") do |v|
-          options[:force] = v
-        end
-        opts.on("--recursive", "operate on subtasks also for delete, status") do |v|
-          options[:recursive] = v
-        end
-        opts.separator ""
-        opts.separator "List options:"
-
-        opts.on("--[no-]color", "--[no-]colors",  "colorize listing") do |v|
-          options[:colorize] = v
-          options[:color_scheme] = 1
-        end
-        opts.on("-s", "--sort", "sort list on priority") do |v|
-          options[:sort] = v
-        end
-        opts.on("-g", "--grep REGEXP", "filter list on pattern") do |v|
-          options[:grep] = v
-        end
-        opts.on("--renumber", "renumber while listing") do |v|
-          options[:renumber] = v
-        end
-        opts.on("--hide-numbering", "hide-numbering while listing ") do |v|
-          options[:hide_numbering] = v
-        end
-        opts.on("--[no-]show-all", "show all tasks (incl closed)") do |v|
-          options[:show_all] = v
-        end
-
-        opts.separator ""
-        opts.separator "Common options:"
-
-        opts.on("-v", "--[no-]verbose", "Run verbosely") do |v|
-          options[:verbose] = v
-        end
-        opts.on("-f", "--file FILENAME", "CSV filename") do |v|
-          options[:file] = v
-        end
-        opts.on("-d DIR", "--dir DIR", "Use TODO file in this directory") do |v|
-          require 'FileUtils'
-          dir = File.expand_path v
-          if File.directory? dir
-            options[:dir] = dir
-            # changing dir is important so that serial_number file is the current one.
-            FileUtils.cd dir
-          else
-            die "#{RED}#{v}: no such directory #{CLEAR}"
-          end
-        end
-        # No argument, shows at tail.  This will print an options summary.
-        # Try it and see!
-        opts.on("-h", "--help", "Show this message") do
-          puts opts
-          exit 0
-        end
-
-        opts.on("--show-actions", "show actions ") do |v|
-          todo = Todo.new(options, ARGV)
-          todo.help nil
-          exit 0
-        end
-
-        opts.on("--version", "Show version") do
-          puts "#{APPNAME} version #{VERSION}, #{DATE}"
-          puts "by #{AUTHOR}. This software is under the GPL License."
-          exit 0
-        end
+    opts.on("--version", "Show version") do
+      version = Cmdapp::version_info || VERSION
+      puts "#{APPNAME} version #{version}, #{DATE}"
+      puts "by #{AUTHOR}. This software is under the GPL License."
+      exit 0
+    end
+    # No argument, shows at tail.  This will print an options summary.
+    # Try it and see!
+    opts.on("-h", "--help", "Show this message") do
+      puts opts
+      exit 0
+    end
         opts.separator ""
         opts.separator "Common Usage:"
         opts.separator <<TEXT
+        #{APPNAME} add "Text ...."
         #{APPNAME} list
-        #{APPNAME} add "TEXT ...."
         #{APPNAME} pri 1 A
         #{APPNAME} close 1 
 TEXT
-        
-      end.parse!(args)
+  end
+
+  Subcommands::command :list do |opts|
+    opts.banner = "Usage: list [options]"
+    opts.description = "List tasks.\t --show-all and others"
+    opts.on("-P", "--project PROJECTNAME", "name of project for add or list") { |v|
+      options[:project] = v
+      options[:filter] = true
+    }
+    opts.on("-p", "--priority A-Z",  "priority code for add or list") { |v|
+      options[:priority] = v
+      options[:filter] = true
+    }
+    opts.on("-C", "--component COMPONENT",  "component name for add or list") { |v|
+      options[:component] = v
+      options[:filter] = true
+    }
+    opts.on("--[no-]color", "--[no-]colors",  "colorize listing") do |v|
+      options[:colorize] = v
+      options[:color_scheme] = 1
+    end
+    opts.on("-s", "--sort", "sort list on priority") do |v|
+      options[:sort] = v
+    end
+    opts.on("-g", "--grep REGEXP", "filter list on pattern") do |v|
+      options[:grep] = v
+    end
+    opts.on("--renumber", "renumber while listing") do |v|
+      options[:renumber] = v
+    end
+    opts.on("--hide-numbering", "hide-numbering while listing ") do |v|
+      options[:hide_numbering] = v
+    end
+    opts.on("--[no-]show-all", "show all tasks (incl closed)") do |v|
+      options[:show_all] = v
+    end
+  end
+
+  Subcommands::command :add do |opts|
+    opts.banner = "Usage: add [options] TEXT"
+    opts.description = "Add a task."
+    opts.on("-f", "--[no-]force", "force verbosely") do |v|
+      options[:force] = v
+    end
+    opts.on("-P", "--project PROJECTNAME", "name of project for add or list") { |v|
+      options[:project] = v
+      options[:filter] = true
+    }
+    opts.on("-p", "--priority A-Z",  "priority code for add or list") { |v|
+      options[:priority] = v
+      options[:filter] = true
+    }
+    opts.on("-C", "--component COMPONENT",  "component name for add or list") { |v|
+      options[:component] = v
+      options[:filter] = true
+    }
+  end
+  # XXX order of these 2 matters !! reverse and see what happens
+  Subcommands::command :pri, :priority do |opts|
+    opts.banner = "Usage: pri [options] [A-Z] <TASK/s>"
+    opts.description = "Add priority to task. "
+    opts.on("-f", "--[no-]force", "force verbosely") do |v|
+      options[:force] = v
+    end
+  end
+  Subcommands::command :depri do |opts|
+    opts.banner = "Usage: depri [options] <TASK/s>"
+    opts.description = "Remove priority of task. \n\t todorb depri <TASK>"
+    opts.on("-f", "--[no-]force", "force verbosely") do |v|
+      options[:force] = v
+    end
+  end
+  Subcommands::command :delete, :del do |opts|
+    opts.banner = "Usage: delete [options] <TASK/s>"
+    opts.description = "Delete a task. \n\t todorb delete <TASK>"
+    opts.on("-f", "--[no-]force", "force - don't prompt") do |v|
+      options[:force] = v
+    end
+    opts.on("--recursive", "operate on subtasks also") { |v|
+      options[:recursive] = v
+    }
+  end
+  Subcommands::command :status do |opts|
+    opts.banner = "Usage: status [options] <STATUS> <TASKS>"
+    opts.description = "Change the status of a task. \t<STATUS> are open closed started pending hold next"
+    opts.on("--recursive", "operate on subtasks also") { |v|
+      options[:recursive] = v
+    }
+  end
+  Subcommands::command :redo do |opts|
+    opts.banner = "Usage: redo"
+    opts.description = "Renumbers the todo file starting 1"
+  end
+  Subcommands::command :note do |opts|
+    opts.banner = "Usage: note <TASK> <TEXT>"
+    opts.description = "Add a note to a task."
+  end
+  Subcommands::command :tag do |opts|
+    opts.banner = "Usage: tag <TAG> <TASKS>"
+    opts.description = "Add a tag to an item/s. "
+  end
+  Subcommands::command :archive do |opts|
+    opts.banner = "Usage: archive"
+    opts.description = "archive closed tasks to archive.txt"
+  end
+  Subcommands::command :copyunder, :cu do |opts|
+    opts.banner = "Usage: copyunder"
+    opts.description = "Move first task under second (as a subtask). aka cu"
+    opts.on("-d", "--delete", "Delete old after copying") do |v|
+      options[:delete_old] = v
+    end
+  end
+  Subcommands::command :addsub do |opts|
+    opts.banner = "Usage: addsub [options]"
+    opts.description = "Add a task under another."
+    opts.on("-P", "--project PROJECTNAME", "name of project for add or list") { |v|
+      options[:project] = v
+      #options[:filter] = true
+    }
+    opts.on("-p", "--priority A-Z",  "priority code for add or list") { |v|
+      options[:priority] = v
+      #options[:filter] = true
+    }
+    opts.on("-C", "--component COMPONENT",  "component name for add or list") { |v|
+      options[:component] = v
+      #options[:filter] = true
+    }
+  end
+  Subcommands::alias_command :open , "status","open"
+  Subcommands::alias_command :close , "status","closed"
+  cmd = Subcommands::opt_parse()
+  args.unshift cmd if cmd
 
       options[:file] ||= "TODO2.txt"
       if options[:verbose]
