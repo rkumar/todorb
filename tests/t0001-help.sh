@@ -1,11 +1,11 @@
 #!/bin/sh
-test_description="Testing out help "
+test_description="Testing out ./t0001-help "
 . ./test-lib.sh
 
 
 
 
-test_todo_session "Testing of help" <<EOF
+test_todo_session "Testing of ./t0001-help" <<EOF
 >>> todorb help
 Usage:  [options] [subcommand [options]]
 Todo list manager
@@ -39,7 +39,8 @@ Commands are:
    addsub : Add a task under another.
 
 Aliases: 
-   priority - pri
+   a - add
+   p - pri
    del - delete
    cu - copyunder
    open - ["status", "open"]
@@ -81,7 +82,8 @@ Commands are:
    addsub : Add a task under another.
 
 Aliases: 
-   priority - pri
+   a - add
+   p - pri
    del - delete
    cu - copyunder
    open - ["status", "open"]

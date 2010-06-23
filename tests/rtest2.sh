@@ -91,10 +91,12 @@ do
    #[[ "$line" = "list" ]] && line="t --sort-serial list";
    #[[ "$line" = "ls" ]] && line="t --sort-serial --no-colors list";
    line=$(echo "$line" | sed 's~^t ~todorb  ~')
-   echo ">>> $line" >> $out
-   eval "$line" | tee -a "$out"
-   # RK since old version stopped expect on blank line I've placed this marker
-   echo ">>> end" >> $out
+   if [[ "$line" != "end" ]]; then
+       echo ">>> $line" >> $out
+       eval "$line" | tee -a "$out"
+       # RK since old version stopped expect on blank line I've placed this marker
+       echo ">>> end" >> $out
+   fi
    #echo "" >> $out
 done
 

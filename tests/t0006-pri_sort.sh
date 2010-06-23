@@ -36,13 +36,13 @@ Changed priority of 2 task/s
 Changed priority of 2 task/s
 >>> end
 >>> todorb list --sort
-             3.2.1.1 [ ] hello there new a u 3.2.1.1 (2010-06-15) 
-         3.2.1 [ ] hello there new a u 3.2.1 (2010-06-15) 
-     3.2 [ ] hello there new a u 3.2 (2010-06-15) 
      3.1 [ ] hello there new a u 3 (2010-06-15) 
+         3.1.1 [ ] hello there new a u 3 (2010-06-15) 
          3.1.2 [ ] hello there new a u 3 (2010-06-15) 
          3.1.3 [ ] hello there new a u 3 (2010-06-15) 
-         3.1.1 [ ] hello there new a u 3 (2010-06-15) 
+     3.2 [ ] hello there new a u 3.2 (2010-06-15) 
+         3.2.1 [ ] hello there new a u 3.2.1 (2010-06-15) 
+             3.2.1.1 [ ] hello there new a u 3.2.1.1 (2010-06-15) 
 [37m[1m   4 [ ] (B) start rubyforge project for todorb (2010-06-14) [0m
 [37m[1m   6 [ ] (B) allow for ENV VARS such as verbose, plain, force (2010-06-15) [0m
 [33m[1m   7 [ ] (A) list: search terms with - + and = (2010-06-15) [0m

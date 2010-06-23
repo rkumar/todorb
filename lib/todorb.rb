@@ -23,8 +23,8 @@ PRI_A = YELLOW + BOLD
 PRI_B = WHITE  + BOLD
 PRI_C = GREEN  + BOLD
 PRI_D = CYAN  + BOLD
-VERSION = "1.0.0"
-DATE = "2010-06-10"
+VERSION = "1.1.0"
+DATE = "2010-06-23"
 APPNAME = File.basename($0)
 AUTHOR = "rkumar"
 TABSTOP = 4 # indentation of subtasks
@@ -420,7 +420,6 @@ class Todo
   end
   ##
   # Appends a tag to task
-  # FIXME: check with subtasks
   #
   # @param [Array] items and tag, or tag and items
   # @return [0,1] success or fail
@@ -467,7 +466,6 @@ class Todo
       end
     end
     totalitems.each { |item| 
-      # FIXME: TODO: if --force used then don'y prompt
       puts "#{item[0]} #{item[1]}"
       ans = nil
       if @options[:force]
