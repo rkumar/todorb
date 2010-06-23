@@ -440,8 +440,10 @@ test_init_todo () {
 
 	# Install latest todo.sh
 	mkdir bin
+        # TODO: XXX 
 	#ln -s "$TEST_DIRECTORY/../todoapp.sh" bin/todoapp.sh
 	ln -s ~/bin/todorb bin/todorb
+#	ln -s ../../../lib/subcommand.rb bin/subcommand.rb
 
 	# Initialize a hack date script
 	TODO_TEST_REAL_DATE=$(which date)
@@ -530,17 +532,12 @@ test_todo_session () {
     status=0
     > expect
     #while read  line
+    # earlier the program would stop expect on a blank line which is unacceptable
+    # i pass an explicit end, since my output does have blank lines
     while IFS='' read line
     do
 	case $line in
-	">>> "*)
-	    test -z "$cmd" || error "bug in the test script: missing blank line separator in test_todo_session"
-	    cmd=${line#>>> }
-	    ;;
-	"=== "*)
-	    status=${line#=== }
-	    ;;
-	"")
+        ">>> end")
 	    if [ ! -z "$cmd" ]; then
 		if [ $status = 0 ]; then
 		    test_expect_success "$1 $subnum" "$cmd > output && test_cmp expect output"
@@ -555,8 +552,15 @@ test_todo_session () {
 		> expect
 	    fi
 	    ;;
+	">>> "*)
+	    test -z "$cmd" || error "bug in the test script: missing blank line separator in test_todo_session"
+	    cmd=${line#>>> }
+	    ;;
+	"=== "*)
+	    status=${line#=== }
+	    ;;
 	*)
-        # please note XXX that a blank line in output terminates what goes into expect !!!  See above
+        # WARNING please NOTE XXX that a blank line in output terminates what goes into expect !!!  See above
 	    echo "$line" >> expect
 	    ;;
 	esac

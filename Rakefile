@@ -5,13 +5,14 @@ begin
   require 'jeweler'
   Jeweler::Tasks.new do |gem|
     gem.name = "todorb"
-    gem.summary = %Q{command-line todo list manager }
-    gem.description = %Q{command-line program that manages a todo list text file }
+    gem.summary = %Q{comprehensive command-line todo list manager with subtasks and more }
+    gem.description = %Q{command-line program that manages a todo list text file, incl subtasks }
     gem.email = "sentinel1879@gmail.com"
     gem.homepage = "http://github.com/rkumar/todorb"
     gem.authors = ["Rahul Kumar"]
     gem.rubyforge_project = "todorb"
     #gem.add_development_dependency "thoughtbot-shoulda", ">= 0"
+    gem.add_development_dependency "subcommand", ">= 0"
     # gem is a Gem::Specification... see http://www.rubygems.org/read/chapter/20 for additional settings
   end
   Jeweler::GemcutterTasks.new
@@ -52,3 +53,12 @@ Rake::RDocTask.new do |rdoc|
   rdoc.rdoc_files.include('README*')
   rdoc.rdoc_files.include('lib/**/*.rb')
 end
+begin
+  require 'yard'
+  YARD::Rake::YardocTask.new
+rescue LoadError
+  task :yardoc do
+    abort "YARD is not available. In order to run yardoc, you must: sudo gem install yard"
+  end
+end
+

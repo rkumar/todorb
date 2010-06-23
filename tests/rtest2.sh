@@ -1,6 +1,6 @@
 #!/bin/bash
 #*******************************************************#
-#                       gentest.sh                      #
+#                       rtest2.sh                       #
 #                 written by Rahul Kumar                #
 #                    December 21, 2009                  #
 #                                                       #
@@ -70,6 +70,7 @@ do
 #   read line
    [ -z "$line" ] && { echo "bye to quit"; continue; }
    [[ "$line" = "bye" ]] && break;
+   [[ "$line" = "abort" ]] && exit 1;
    [ -n "$line" ] && history -s "$line"
 
    ## user can execute test_tick in current shell
@@ -83,16 +84,18 @@ do
       line=$( echo "$line" | sed 's/^list/t --sort-serial list/')
    fi
    if grep -q "^ls" <<< "$line"; then
-      line=$( echo "$line" | sed 's/^ls/t --sort-serial --no-colors list/')
+      line=$( echo "$line" | sed 's/^ls/t list --sort-serial --no-colors /')
    fi
    line=$(echo "$line" | sed 's/--ss /--sort-serial /')
    line=$(echo "$line" | sed 's/--nc /--no-colors /')
    #[[ "$line" = "list" ]] && line="t --sort-serial list";
    #[[ "$line" = "ls" ]] && line="t --sort-serial --no-colors list";
-   line=$(echo "$line" | sed 's/^t /todorb /')
+   line=$(echo "$line" | sed 's~^t ~todorb  ~')
    echo ">>> $line" >> $out
    eval "$line" | tee -a "$out"
-   echo "" >> $out
+   # RK since old version stopped expect on blank line I've placed this marker
+   echo ">>> end" >> $out
+   #echo "" >> $out
 done
 
 ## generate the test case transcript

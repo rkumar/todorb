@@ -1,10 +1,11 @@
-DISTFILES := README.markdown get_serial_number colors.sh todoapp.sh
-VERSION := `cat VERSION_FILE`
+#DISTFILES := README.markdown get_serial_number colors.sh todoapp.sh
+#VERSION := `cat VERSION`
  
 all: install
 
 install:
 
+#	sed -i.bk 's/^VERSION = .*/VERSION = \"'$(VERSION)'\"/g' lib/todorb.rb
 	rake build && sudo rake install
 	
 #
