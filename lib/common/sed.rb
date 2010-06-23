@@ -1,10 +1,13 @@
 #!/usr/bin/env ruby -w
-#*************************************************************
-# Sed like operations - just change row and delete row
-# While converting some shell scripts in which i have used
-# sed extensively, I need this kind of functionality
-#
-#*************************************************************
+=begin
+  * Name:          sed.rb
+  * Description:   Sed like operations
+  * Author:        rkumar
+  * Date:          2010-06-10 20:10 
+  * License:       Ruby License
+
+=end
+
 ##
 # changes one or more rows based on pattern and replacement
 # Also if replacement is not given, expects a block and yields
