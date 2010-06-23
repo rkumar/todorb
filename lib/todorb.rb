@@ -234,16 +234,20 @@ class Todo
     @ctr = 0
     @total = 0
     #CSV.foreach(@file,:col_sep => "\t") do |row|    # 1.9 2009-10-05 11:12 
-    File.open(@file).each do |line|
-      row = line.chomp.split "\t"
-      @total += 1
-      if @options[:show_all]
-        @data << row
-        @ctr += 1
-      else
-        unless row[1] =~ /^\[x\]/ 
+    filelist = [@file]
+    filelist << @archive_path if @options[:show_arch]
+    filelist.each do |file| 
+      File.open(file).each do |line|
+        row = line.chomp.split "\t"
+        @total += 1
+        if @options[:show_all]
           @data << row
           @ctr += 1
+        else
+          unless row[1] =~ /^\[x\]/ 
+            @data << row
+            @ctr += 1
+          end
         end
       end
     end
@@ -338,8 +342,15 @@ class Todo
       puts string
     end
   end
+  # internal method for sorting on reverse of line (status, priority)
   def sort
-    @data.sort! { |a,b| b[1] <=> a[1] }
+    fold_subtasks
+    if @options[:reverse]
+      @data.sort! { |a,b| a[1] <=> b[1] }
+    else
+      @data.sort! { |a,b| b[1] <=> a[1] }
+    end
+    unfold_subtasks
   end
   def grep
     r = Regexp.new @options[:grep]
@@ -790,7 +801,7 @@ class Todo
         line.sub!(/[0-9]+\./, "#{ctr}.")
       end
     end
-    _set_serial_number ctr
+    _set_serial_number ctr+1
     puts "Redone numbering"
     0
   end
@@ -838,6 +849,46 @@ class Todo
   end
   ##     [1, 2, 3, 3.1, 3.1.1, 3.2, 3.3 ... ], " 3.1.1\t[ ] some task"
 
+  def fold_subtasks
+    #load_array
+    prev = ""
+    newarray = []
+    # get the main item, avoid subitem
+      #item = line.match(/^ *([0-9\.]+)/)
+    rx = Regexp.new "^ *([0-9]+)"
+    @data.each { |row| 
+      it = row[0].match(rx)
+      item = it[1]
+      if item == prev # append to prev line
+        #puts "item matches prev #{item} #{prev} "
+        x=newarray.last
+        x[1] << "#{row[0]}\t#{row[1]}"
+      else
+        #puts "no match item matches prev #{row[0]}: #{prev} "
+        newarray << row
+      end
+        prev = item
+    }
+    #newarray.each { |row| puts "#{row[0]} #{row[1]}" }
+    @data = newarray
+  end
+  def unfold_subtasks
+    newarray = []
+    # get the main item, avoid subitem
+      #item = line.match(/^ *([0-9\.]+)/)
+    @data.each { |row| 
+      if row[1] =~ //
+        #puts "row #{row[0]} contains ^B"
+        line = row.join "\t"
+        lines = line.split //
+        #puts " #{lines.count} lines "
+        lines.each { |e| newarray << e.split("\t") }
+      else
+        newarray << row
+      end
+    }
+    @data = newarray
+  end
   def self.main args
     ret = nil
     begin
@@ -925,8 +976,11 @@ TEXT
       options[:colorize] = v
       options[:color_scheme] = 1
     end
-    opts.on("-s", "--sort", "sort list on priority") do |v|
+    opts.on("-s", "--sort", "sort list on status,priority") do |v|
       options[:sort] = v
+    end
+    opts.on("--reverse", "sort list on status,priority reversed") do |v|
+      options[:reverse] = v
     end
     opts.on("-g", "--grep REGEXP", "filter list on pattern") do |v|
       options[:grep] = v
@@ -940,9 +994,13 @@ TEXT
     opts.on("--[no-]show-all", "show all tasks (incl closed)") do |v|
       options[:show_all] = v
     end
+    opts.on("--show-arch", "show all tasks adding archived ones too") do |v|
+      options[:show_arch] = v
+      options[:show_all] = v # when adding archived, we set show-all so closed are visible
+    end
   end
 
-  Subcommands::command :add do |opts|
+  Subcommands::command :add, :a do |opts|
     opts.banner = "Usage: add [options] TEXT"
     opts.description = "Add a task."
     opts.on("-f", "--[no-]force", "force verbosely") do |v|
@@ -962,7 +1020,7 @@ TEXT
     }
   end
   # XXX order of these 2 matters !! reverse and see what happens
-  Subcommands::command :pri, :priority do |opts|
+  Subcommands::command :pri, :p do |opts|
     opts.banner = "Usage: pri [options] [A-Z] <TASK/s>"
     opts.description = "Add priority to task. "
     opts.on("-f", "--[no-]force", "force verbosely") do |v|
@@ -1032,6 +1090,10 @@ TEXT
       #options[:filter] = true
     }
   end
+  #Subcommands::command :testy do |opts|
+    #opts.banner = "Usage: test"
+    #opts.description = "test out some functionality"
+  #end
   Subcommands::alias_command :open , "status","open"
   Subcommands::alias_command :close , "status","closed"
   cmd = Subcommands::opt_parse()
