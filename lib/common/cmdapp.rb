@@ -27,6 +27,7 @@ module Cmdapp
   # @return [Boolean] whether it is mapped or not.
   #
   def check_aliases action, args
+    return false unless @aliases
     ret = @aliases[action]
     if ret
       a = ret.shift
@@ -118,6 +119,10 @@ module Cmdapp
     appname = @appname
     pattern = Regexp.new "^#{appname}:.*$"
     filename = @app_serial_path || "serial_numbers"
+    # during testing redo this file does not exist, so i get errors
+    if !File.exists? filename
+      _get_serial_number
+    end
     _backup filename
     change_row filename, pattern, "#{appname}:#{number}"
   end
