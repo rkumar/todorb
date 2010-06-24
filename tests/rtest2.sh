@@ -20,6 +20,12 @@ case "$1" in
       shift
       shift
       ;;
+   -F|--file)
+   # use this as filename don't generate, useful when recreateing
+   filename=$2
+      shift
+      shift
+      ;;
    *)
       echo "Error: Unknown option: $1" >&2   # rem _
       exit 1
@@ -118,10 +124,12 @@ echo "" >> "$out"
 echo "EOF" >> "$out"
 echo "test_done" >> "$out"
 
-# try to create a decent file name
-serno=$( get_serial_number -a "$APP" -d "../"  )
-serno=$( printf "%04s" "$serno" )
-filename="../t${serno}-${filesuffix}.sh"
+if [[ -z "$filename" ]]; then
+    # try to create a decent file name
+    serno=$( get_serial_number -a "$APP" -d "../"  )
+    serno=$( printf "%04s" "$serno" )
+    filename="../t${serno}-${filesuffix}.sh"
+fi
 echo "trying to copy $out to $filename"
 chmod +x "$out"
 cp -i "$out" "$filename" < /dev/tty

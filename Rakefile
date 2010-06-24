@@ -6,13 +6,14 @@ begin
   Jeweler::Tasks.new do |gem|
     gem.name = "todorb"
     gem.summary = %Q{comprehensive command-line todo list manager with subtasks and more }
-    gem.description = %Q{command-line program that manages a todo list text file, incl subtasks }
+    gem.description = %Q{command-line program that manages a todo list text file, incl subtasks, status, priorities etc }
     gem.email = "sentinel1879@gmail.com"
     gem.homepage = "http://github.com/rkumar/todorb"
     gem.authors = ["Rahul Kumar"]
     gem.rubyforge_project = "todorb"
     #gem.add_development_dependency "thoughtbot-shoulda", ">= 0"
-    gem.add_development_dependency "subcommand", ">= 0"
+    gem.add_development_dependency "subcommand", ">= 1.0.4"
+    gem.add_dependency "subcommand", ">= 1.0.4"
     # gem is a Gem::Specification... see http://www.rubygems.org/read/chapter/20 for additional settings
   end
   Jeweler::GemcutterTasks.new

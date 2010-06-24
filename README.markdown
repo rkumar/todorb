@@ -60,6 +60,10 @@ After this, I will port over my bug tracker, [bugzy.txt](http://github.com/rkuma
 1. The file format is almost identical to the output except that there is a TAB after the task number.
 2. Notes are saved on same line as task, but displayed on another line with asterisk prefix.
 
+## RDOC
+
+http://todorb.rubyforge.org/doc/
+
 ## Copyright
 
 Copyright (c) 2010 Rahul Kumar. See LICENSE for details.

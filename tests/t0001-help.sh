@@ -1,20 +1,20 @@
 #!/bin/sh
-test_description="Testing out ./t0001-help "
+test_description="Testing out help "
 . ./test-lib.sh
 
 
 
 
-test_todo_session "Testing of ./t0001-help" <<EOF
+test_todo_session "Testing of help" <<EOF
 >>> todorb help
-Usage:  [options] [subcommand [options]]
+Usage: todorb [options] [subcommand [options]]
 Todo list manager
     -v, --[no-]verbose               Run verbosely
     -f, --file FILENAME              CSV filename
     -d, --dir DIR                    Use TODO file in this directory
         --show-actions               show actions 
         --version                    Show version
-    -h, --help                       Show this message
+    -h, --help                       Print this help
 
 Common Usage:
         todorb add "Text ...."
@@ -50,14 +50,14 @@ Aliases:
 See '/opt/local/bin/todorb help COMMAND' for more information on a specific command.
 >>> end
 >>> todorb --help
-Usage:  [options] [subcommand [options]]
+Usage: todorb [options] [subcommand [options]]
 Todo list manager
     -v, --[no-]verbose               Run verbosely
     -f, --file FILENAME              CSV filename
     -d, --dir DIR                    Use TODO file in this directory
         --show-actions               show actions 
         --version                    Show version
-    -h, --help                       Show this message
+    -h, --help                       Print this help
 
 Common Usage:
         todorb add "Text ...."

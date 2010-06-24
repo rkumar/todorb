@@ -1,3 +1,5 @@
+= todorb 1.1.1, 2010-06-24 
+* fixed --show-actions option
 = todorb 1.1.0, 2010-06-23 
 * sort folds subtasks so they remain together
 * added switches so archived tasks can be seen also

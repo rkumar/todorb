@@ -9,9 +9,9 @@ Gem::Specification.new do |s|
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["Rahul Kumar"]
-  s.date = %q{2010-06-23}
+  s.date = %q{2010-06-24}
   s.default_executable = %q{todorb}
-  s.description = %q{command-line program that manages a todo list text file, incl subtasks }
+  s.description = %q{command-line program that manages a todo list text file, incl subtasks, status, priorities etc }
   s.email = %q{sentinel1879@gmail.com}
   s.executables = ["todorb"]
   s.extra_rdoc_files = [
@@ -48,6 +48,11 @@ Gem::Specification.new do |s|
      "tests/t0007-status.sh",
      "tests/t0008-addsub.sh",
      "tests/t0009-del.sh",
+     "tests/t0010-copyunder.sh",
+     "tests/t0011-redo.sh",
+     "tests/t0012-renumber.sh",
+     "tests/t0013-add_opt.sh",
+     "tests/t0014-grep.sh",
      "tests/test-lib.sh",
      "todorb.gemspec"
   ]
@@ -64,10 +69,13 @@ Gem::Specification.new do |s|
 
     if Gem::Version.new(Gem::RubyGemsVersion) >= Gem::Version.new('1.2.0') then
       s.add_development_dependency(%q<subcommand>, [">= 0"])
+      s.add_runtime_dependency(%q<subcommand>, [">= 0"])
     else
+      s.add_dependency(%q<subcommand>, [">= 0"])
       s.add_dependency(%q<subcommand>, [">= 0"])
     end
   else
+    s.add_dependency(%q<subcommand>, [">= 0"])
     s.add_dependency(%q<subcommand>, [">= 0"])
   end
 end
