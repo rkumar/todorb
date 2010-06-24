@@ -1,3 +1,12 @@
+= todorb 1.1.0, 2010-06-23 
+* sort folds subtasks so they remain together
+* added switches so archived tasks can be seen also
+  - show_arch
+* reverse sort option: --reverse
+* copyunder won't delete, use --delete option to delete also
+* changed alias for pri to p, earlier priority
+
+
 = todorb 1.0.0, 2010-06-22 16:16
 * using subcommand gem
 * suboptions will come *after* command but before arguments
