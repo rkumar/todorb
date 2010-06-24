@@ -23,8 +23,8 @@ PRI_A = YELLOW + BOLD
 PRI_B = WHITE  + BOLD
 PRI_C = GREEN  + BOLD
 PRI_D = CYAN  + BOLD
-VERSION = "1.1.0"
-DATE = "2010-06-23"
+VERSION = "1.1.1"
+DATE = "2010-06-24"
 APPNAME = File.basename($0)
 AUTHOR = "rkumar"
 TABSTOP = 4 # indentation of subtasks
@@ -878,7 +878,7 @@ class Todo
       if row[1] =~ //
         #puts "row #{row[0]} contains ^B"
         line = row.join "\t"
-        lines = line.split //
+        lines = line.split(//)
         #puts " #{lines.count} lines "
         lines.each { |e| newarray << e.split("\t") }
       else
@@ -906,7 +906,7 @@ class Todo
       end
 
   Subcommands::global_options do |opts|
-    opts.banner = "Usage: #{$APPNAME} [options] [subcommand [options]]"
+    opts.banner = "Usage: #{APPNAME} [options] [subcommand [options]]"
     opts.description = "Todo list manager"
     #opts.separator ""
     #opts.separator "Global options are:"
@@ -928,8 +928,9 @@ class Todo
       end
     end
     opts.on("--show-actions", "show actions ") do |v|
-      todo = Todo.new(options, ARGV)
-      todo.help nil
+      #todo = Todo.new(options, ARGV)
+      #todo.help nil - not working now that we've moved to subcommand
+      puts Subcommands::print_actions
       exit 0
     end
 
@@ -941,10 +942,13 @@ class Todo
     end
     # No argument, shows at tail.  This will print an options summary.
     # Try it and see!
-    opts.on("-h", "--help", "Show this message") do
-      puts opts
-      exit 0
-    end
+    #opts.on("-h", "--help", "Show this message") do
+      #puts opts
+      #exit 0
+    #end
+  end
+  Subcommands::add_help_option
+  Subcommands::global_options do |opts|
         opts.separator ""
         opts.separator "Common Usage:"
         opts.separator <<TEXT
