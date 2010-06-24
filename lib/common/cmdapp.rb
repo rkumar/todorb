@@ -67,13 +67,22 @@ module Cmdapp
   end
   # not required if using Subcommand
   def help args
+    if @actions.nil? 
+      if defined? @commands
+        unless @commands.empty?
+          @actions = @commands
+        end
+      end
+    end
     if @actions
       puts "Actions are "
       @actions.each_pair { |name, val| puts "#{name}\t#{val}" }
     end
     puts " "
-    puts "Aliases are "
-    @aliases.each_pair { |name, val| puts "#{name}:\t#{val.join(' ')}" }
+    if @aliases
+      puts "Aliases are "
+      @aliases.each_pair { |name, val| puts "#{name}:\t#{val.join(' ')}" }
+    end
     0
   end
   ## 
