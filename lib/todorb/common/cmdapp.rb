@@ -208,5 +208,39 @@ module Cmdapp
     v
   end
 
+  # separates args to list-like operations
+  # +xxx means xxx should match in output
+  # -xxx means xxx should not exist in output
+  # @param [Array] list of search terms to match or not-match
+  # @return [Array, Array] array of terms that should match, and array of terms
+  # that should not match.
+  def _list_args args
+    incl = []
+    excl = []
+    args.each do |e| 
+      if e[0] == '+'
+        incl << e[1..-1]
+      elsif  e[0] == '-'
+        excl << e[1..-1]
+      else
+        incl << e
+      end
+    end
+    incl = nil if incl.empty?
+    excl = nil if excl.empty?
+    return incl, excl
+  end
+  ##  
+  # creates a regexp and for each row returns the row and the regexp
+  # you can use the regexp on whatever part of the row you want to match or reject
+  def filter_rows rows, incl
+    if incl
+      incl_str = incl.join "|"
+      r = Regexp.new incl_str
+      #rows = rows.select { |row| row['title'] =~ r }
+      rows = rows.select { |row| yield(row, r) }
+    end
+    rows
+  end
 
 end

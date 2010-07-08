@@ -10,9 +10,9 @@
 =end
 require 'rubygems'
 #require 'csv'
-require 'common/colorconstants'
-require 'common/sed'
-require 'common/cmdapp'
+require 'todorb/common/colorconstants'
+require 'todorb/common/sed'
+require 'todorb/common/cmdapp'
 require 'subcommand'
 include ColorConstants
 include Sed
@@ -272,9 +272,17 @@ class Todo
     end
   end
   def list args
+    incl, excl = Cmdapp._list_args args
     populate
     grep if @options[:grep]
     filter if @options[:filter]
+    @data = Cmdapp.filter_rows( @data, incl) do |row, regexp|
+      row[1] =~ regexp
+    end
+    @data = Cmdapp.filter_rows( @data, excl) do |row, regexp|
+      row[1] !~ regexp
+    end
+
     sort if @options[:sort]
     renumber if @options[:renumber]
     colorize # << currently this is where I print !! Since i colorize the whole line

@@ -1,3 +1,10 @@
+= todorb 1.2.0, 2010-07-08
+* added search terms for list
+  todorb list testing -window # (match testing, but reject window)
+  todorb list -- -windows perl python # (reject windows, match perl or python)
+* move lib/common under lib/todorb/common since it was loading wrong
+libs from another gem
+
 = todorb 1.1.1, 2010-06-24 
 * fixed --show-actions option
 = todorb 1.1.0, 2010-06-23 
