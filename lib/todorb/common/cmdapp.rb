@@ -8,7 +8,8 @@
   * License:       Ruby License
 
 =end
-require 'common/sed'
+#require 'common/sed'
+require 'todorb/common/sed'
 
 ERRCODE = 1
 
