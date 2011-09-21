@@ -6,7 +6,7 @@ all: install
 install:
 
 #	sed -i.bk 's/^VERSION = .*/VERSION = \"'$(VERSION)'\"/g' lib/todorb.rb
-	rake build && sudo rake install
+	rake build && rake install
 	
 #
 # Testing
