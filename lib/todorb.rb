@@ -696,7 +696,7 @@ class Todo
     raise "Please load array first!" if @data.empty?
     verbose "get_item got #{item}."
     #rx = regexp_item(item)
-    rx = Regexp.new("^ +#{item}$")
+    rx = Regexp.new("^ *#{item}$")
     rx2 = Regexp.new("^ +#{item}\.")
     rows = []
     @data.each { |row|
