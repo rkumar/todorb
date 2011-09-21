@@ -333,6 +333,8 @@ class Todo
             pri = self.class.const_get("PRI_#{m[1]}")
             #string = "#{YELLOW}#{BOLD}#{string}#{CLEAR}"
             string = "#{pri}#{string}#{CLEAR}"
+          when "X", "Y", "Z"
+            string = "#{BLUE}#{string}#{CLEAR}"
           else
             string = "#{NORMAL}#{GREEN}#{string}#{CLEAR}"
             #string = "#{BLUE}\e[6m#{string}#{CLEAR}"
