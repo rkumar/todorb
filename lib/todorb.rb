@@ -665,7 +665,8 @@ class Todo
     raise "Please load array first!" if @data.empty?
     puts "get_item got #{item}." if @verbose
     #rx = regexp_item(item)
-    rx = Regexp.new("^ +#{item}$")
+    #rx = Regexp.new("^ +#{item}$") # 3 digit ids failing
+    rx = Regexp.new("^ *#{item}$") # 2011-09-21 trying out
     @data.each { |row|
       puts "    get_item read #{row[0]}." if @verbose 
       return row if row[0] =~ rx
@@ -1078,7 +1079,7 @@ TEXT
     opts.description = "archive closed tasks to archive.txt"
   end
   Subcommands::command :copyunder, :cu do |opts|
-    opts.banner = "Usage: copyunder"
+    opts.banner = "Usage: copyunder <task to move> <task to be moved under>"
     opts.description = "Move first task under second (as a subtask). aka cu"
     opts.on("-d", "--delete", "Delete old after copying") do |v|
       options[:delete_old] = v
