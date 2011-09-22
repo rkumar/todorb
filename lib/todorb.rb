@@ -237,6 +237,7 @@ class Todo
     filelist = [@file]
     filelist << @archive_path if @options[:show_arch]
     filelist.each do |file| 
+      next unless File.exist? file # 2011-09-22 
       File.open(file).each do |line|
         row = line.chomp.split "\t"
         @total += 1
