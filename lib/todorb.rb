@@ -72,6 +72,14 @@ class Todo
   def init_vars
     @app_default_action = "list"
     @app_file_path = @options[:file] || "TODO2.txt"
+    unless File.exist? @app_file_path
+      Dir.chdir ".."
+      if File.exist? @app_file_path
+        print_red "Using #{Dir.pwd} "
+      else
+        warning "Could not find #{@app_file_path} "
+      end
+    end
     #@app_serial_path = File.expand_path("~/serial_numbers")
     @app_serial_path = "serial_numbers"
     @archive_path = "todo_archive.txt" 
@@ -383,7 +391,6 @@ class Todo
   def pri args
     errors = 0
     ctr = 0
-    #populate # populate removed closed task so later saving will lose tasks
     load_array
     ## if the first arg is priority then following items all have that priority
     ## if the first arg is item/s then wait for priority and use that
